@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { FiEye, FiEyeOff } from "react-icons/fi";
+import Sidebar from "../components/Sidebar";
+import Header from "../components/Header";
 import RoleDropdown from "../components/RoleDropdown";
 import { registerUser } from "../services/authService";
+import withAuth from "../utils/withAuth";
 
-export default function Register() {
+function Register() {
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -16,6 +20,7 @@ export default function Register() {
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "" });
+  const [showPassword, setShowPassword] = useState(false);
 
   /* ======================================================
      VALIDATION FUNCTIONS
@@ -116,7 +121,7 @@ export default function Register() {
          SUCCESS
       ========================================== */
       setMsg({ text: data.message || "Registered Successfully! Redirecting...", type: "success" });
-      setTimeout(() => router.push("/login"), 1500);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch (err) {
       console.error(
         "REGISTER ERROR:",
@@ -148,11 +153,14 @@ export default function Register() {
      UI
   ====================================================== */
   return (
-    <div className="auth-container">
-      <div className="auth-box">
-        <h2>Register / नोंदणी</h2>
+    <div className="dashboard">
+      <Sidebar />
+      <div className="main">
+        <Header title="नोंदणी / Register" />
 
-        <form onSubmit={handleSubmit}>
+        <div className="auth-container">
+          <div className="auth-box">
+            <form onSubmit={handleSubmit}>
           {/* Full Name */}
           <input
             type="text"
@@ -188,15 +196,23 @@ export default function Register() {
           />
 
           {/* Password */}
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            className="input"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
+          <div className="password-field">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              className="input"
+              value={form.password}
+              onChange={handleChange}
+              required
+            />
+            <span
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <FiEyeOff /> : <FiEye />}
+            </span>
+          </div>
 
           {/* Role Dropdown */}
           <RoleDropdown
@@ -212,7 +228,7 @@ export default function Register() {
               color: msg.type === "success" ? "#15803d" : "#dc2626",
               borderRadius: "6px", padding: "8px 12px", margin: "10px 0", fontSize: "13px",
             }}>
-              {msg.type === "success" ? "✓" : "⚠️"} {msg.text}
+              {msg.text}
             </div>
           )}
 
@@ -227,24 +243,11 @@ export default function Register() {
               : "Register"}
           </button>
         </form>
-
-        {/* Switch to Login */}
-        <p className="auth-switch">
-          Already have an account?{" "}
-          <span
-            style={{
-              cursor: "pointer",
-              color: "#ff6b00",
-              fontWeight: "600",
-            }}
-            onClick={() =>
-              router.push("/login")
-            }
-          >
-            Login
-          </span>
-        </p>
+        </div>
+        </div>
       </div>
     </div>
   );
 }
+
+export default withAuth(Register, ["Admin"]);

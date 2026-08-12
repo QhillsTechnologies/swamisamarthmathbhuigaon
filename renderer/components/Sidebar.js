@@ -1,9 +1,5 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import {
-  FaHome, FaPlus, FaList, FaCalendar,
-  FaChartBar, FaUser, FaSignOutAlt,
-} from "react-icons/fa";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -16,20 +12,21 @@ export default function Sidebar() {
   }, []);
 
   const ROLE_MENU = {
-    Admin: ["dashboard", "new_booking", "all_bookings", "schedule", "reports", "add_seva", "profile"],
+    Admin: ["dashboard", "new_booking", "all_bookings", "schedule", "reports", "add_seva", "register", "profile", "check_update"],
     "Entry Operator": ["dashboard", "new_booking", "all_bookings", "schedule", "profile"],
     Accountant: ["dashboard", "new_booking", "all_bookings", "reports", "profile"],
   };
 
-  // Menu items with Marathi names
   const menu = [
-    { key: "dashboard",    name: "Dashboard",           path: "/dashboard",         icon: <FaHome /> },
-    { key: "new_booking",  name: "New Booking",         path: "/new-booking",       icon: <FaPlus /> },
-    { key: "all_bookings", name: "All Bookings",        path: "/all-bookings",      icon: <FaList /> },
-    { key: "schedule",     name: "Tomorrow's Schedule", path: "/tomorrow-schedule", icon: <FaCalendar /> },
-    { key: "reports",      name: "Reports",             path: "/reports",           icon: <FaChartBar /> },
-    { key: "add_seva",     name: "Add Seva",            path: "/add-seva",          icon: <FaPlus /> },
-    { key: "profile",      name: "My Profile",          path: "/profile",           icon: <FaUser /> },
+    { key: "dashboard",    name: "Dashboard",           path: "/dashboard" },
+    { key: "new_booking",  name: "New Booking",         path: "/new-booking" },
+    { key: "all_bookings", name: "All Bookings",        path: "/all-bookings" },
+    { key: "schedule",     name: "Tomorrow's Schedule", path: "/tomorrow-schedule" },
+    { key: "reports",      name: "Reports",             path: "/reports" },
+    { key: "add_seva",     name: "Add Seva",            path: "/add-seva" },
+    { key: "register",     name: "Register User",       path: "/register" },
+    { key: "profile",      name: "My Profile",          path: "/profile" },
+    { key: "check_update", name: "Check for Updates",   path: "/check-update" },
   ];
 
   const allowedMenu = role
@@ -83,20 +80,13 @@ export default function Sidebar() {
             className={`menu-item ${isActive ? "active" : ""}`}
             onClick={() => router.push(item.path)}
           >
-            <span className="icon">{item.icon}</span>
-            {item.name}
+              {item.name}
           </div>
         );
       })}
 
-      {/* Account Section */}
-      <div className="menu-title" style={{ marginTop: "20px" }}>
-        Account
-      </div>
-
       {/* Logout */}
       <div className="menu-item logout" onClick={handleLogout}>
-        <span className="icon"><FaSignOutAlt /></span>
         बाहेर पडा
       </div>
     </div>

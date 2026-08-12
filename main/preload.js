@@ -1,8 +1,11 @@
-import { contextBridge, ipcRenderer } from 'electron'
+const { contextBridge, ipcRenderer } = require('electron')
 
 const handler = {
   send(channel, value) {
     ipcRenderer.send(channel, value)
+  },
+  invoke(channel, ...args) {
+    return ipcRenderer.invoke(channel, ...args)
   },
   on(channel, callback) {
     const subscription = (_event, ...args) => callback(...args)

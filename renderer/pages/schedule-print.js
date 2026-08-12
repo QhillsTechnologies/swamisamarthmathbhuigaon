@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import apiRequest from "../services/api";
 
 export default function SchedulePrint() {
   const [bookings, setBookings] = useState([]);
@@ -16,16 +17,15 @@ export default function SchedulePrint() {
   };
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/bookings/tomorrow")
-      .then((res) => res.json())
-      .then((data) => setBookings(data))
-      .catch(() => console.log("No backend yet"));
+    apiRequest("/Bookings_tomorrow")
+      .then((data) => setBookings(Array.isArray(data) ? data : data.bookings || []))
+      .catch((err) => console.error("Tomorrow schedule (print) error:", err));
   }, []);
 
   return (
     <div className="print-page">
 
-      <h2>Tomorrow Schedule / उद्याचे वेळापत्रक</h2>
+      <h2>उद्याचे वेळापत्रक / Tomorrow Schedule</h2>
       <p>{getTomorrow()}</p>
 
       <div className="print-table">
@@ -48,7 +48,7 @@ export default function SchedulePrint() {
         className="primary-btn"
         onClick={() => window.print()}
       >
-        🖨 Print Now
+        Print Now
       </button>
 
     </div>

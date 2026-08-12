@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import {
   loginUser,
   saveAuthData,
@@ -15,6 +16,7 @@ export default function Login() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // ===============================
   // Handle Input Change
@@ -81,7 +83,7 @@ export default function Login() {
   return (
     <div className="auth-container">
       <div className="auth-box">
-        <h2>Login / लॉगिन</h2>
+        <h2>लॉगिन / Login</h2>
 
         <form onSubmit={handleSubmit}>
           {/* Email */}
@@ -96,15 +98,23 @@ export default function Login() {
           />
 
           {/* Password */}
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            className="input"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
+          <div className="password-field">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              className="input"
+              value={form.password}
+              onChange={handleChange}
+              required
+            />
+            <span
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <FiEyeOff /> : <FiEye />}
+            </span>
+          </div>
 
           {/* Error Message */}
           {error && (
@@ -129,21 +139,6 @@ export default function Login() {
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
-
-        {/* Register Link */}
-        <p className="auth-switch">
-          Don't have an account?{" "}
-          <span
-            style={{
-              cursor: "pointer",
-              color: "#0070f3",
-              fontWeight: "600",
-            }}
-            onClick={() => router.push("/register")}
-          >
-            Register
-          </span>
-        </p>
       </div>
     </div>
   );

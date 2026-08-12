@@ -10,6 +10,7 @@ export default function DevoteeForm() {
     address: "",
     phone: "",
     email: "",
+    sendSms: false,
   });
 
   const [searchPhone, setSearchPhone] = useState("");
@@ -24,6 +25,7 @@ export default function DevoteeForm() {
       address: saved.address || "",
       phone: saved.phone || "",
       email: saved.email || "",
+      sendSms: !!saved.sendSms,
     });
   }, []);
 
@@ -76,17 +78,18 @@ export default function DevoteeForm() {
           address: latest.address || "",
           phone: latest.phone || phone,
           email: latest.email || "",
+          sendSms: form.sendSms,
         };
 
         setForm(updated);
         const existing = JSON.parse(localStorage.getItem("bookingForm") || "{}");
         localStorage.setItem("bookingForm", JSON.stringify({ ...existing, ...updated }));
-        setSearchMessage("✅ भक्त सापडले! तपशील आपोआप भरले.");
+        setSearchMessage("भक्त सापडले! तपशील आपोआप भरले.");
       } else {
-        setSearchMessage("❌ भक्त सापडले नाही. कृपया तपशील स्वतः भरा.");
+        setSearchMessage("भक्त सापडले नाही. कृपया तपशील स्वतः भरा.");
       }
     } catch (err) {
-      setSearchMessage("❌ भक्त सापडले नाही. कृपया तपशील स्वतः भरा.");
+      setSearchMessage("भक्त सापडले नाही. कृपया तपशील स्वतः भरा.");
       console.log("Phone search failed:", err.message);
     } finally {
       setSearching(false);
@@ -94,7 +97,7 @@ export default function DevoteeForm() {
   };
 
   return (
-    <div className="db-section">
+    <div className="devotee-form">
 
       {/* PHONE SEARCH BOX — renamed to Search Devotee */}
       <h3>भक्त शोधा / Search Devotee</h3>
@@ -109,7 +112,7 @@ export default function DevoteeForm() {
             setSearchPhone(value);
 
             if (value.length === 0) {
-              const empty = { smarnarth: "", name: "", address: "", phone: "", email: "" };
+              const empty = { smarnarth: "", name: "", address: "", phone: "", email: "", sendSms: form.sendSms };
               setForm(empty);
               setSearchMessage("");
               const existing = JSON.parse(localStorage.getItem("bookingForm") || "{}");
@@ -124,7 +127,7 @@ export default function DevoteeForm() {
       {searchMessage && <p style={{ padding: "5px" }}>{searchMessage}</p>}
 
       {/* DEVOTEE DETAILS */}
-      <h3 style={{ marginTop: "15px" }}>भक्त तपशील / Devotee Details</h3>
+      <h3 style={{ marginTop: "15px" }}>भक्त माहिती / Devotee Information</h3>
 
       <input
         className="input"
@@ -168,6 +171,15 @@ export default function DevoteeForm() {
         value={form.email}
         onChange={(e) => updateForm("email", e.target.value)}
       />
+
+      <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px", fontSize: "14px" }}>
+        <input
+          type="checkbox"
+          checked={!!form.sendSms}
+          onChange={(e) => updateForm("sendSms", e.target.checked)}
+        />
+        पावतीची लिंक SMS द्वारे पाठवा / Send receipt link via SMS
+      </label>
     </div>
   );
 }

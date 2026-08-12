@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
-import PrintOptionsModal from "../components/PrintOptionsModal";
 import withAuth from "../utils/withAuth";
 import apiRequest from "../services/api";
 
 function TomorrowSchedule() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showPrintOptions, setShowPrintOptions] = useState(false);
   const [fetchError, setFetchError] = useState("");
 
   /* ======================================================
@@ -101,11 +99,11 @@ function TomorrowSchedule() {
       <Sidebar />
 
       <div className="main">
-        <Header title="Tomorrow's Schedule / उद्याचे वेळापत्रक" />
+        <Header title="उद्याचे वेळापत्रक / Tomorrow's Schedule" />
 
         {fetchError && (
           <div style={{ background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "6px", color: "#dc2626", padding: "8px 12px", margin: "10px 0", fontSize: "13px" }}>
-            ⚠️ {fetchError}
+            {fetchError}
           </div>
         )}
 
@@ -113,18 +111,6 @@ function TomorrowSchedule() {
         <p className="date-text">
           {getTomorrow()}
         </p>
-
-        {/* Print Button */}
-        <div className="top-actions">
-          <button
-            className="print-btn"
-            onClick={() =>
-              setShowPrintOptions(true)
-            }
-          >
-            🖨 Print / छापा
-          </button>
-        </div>
 
         {/* Schedule List */}
         <div className="schedule-box">
@@ -179,14 +165,7 @@ function TomorrowSchedule() {
         </div>
       </div>
 
-      {/* PRINT OPTIONS MODAL */}
-      {showPrintOptions && (
-        <PrintOptionsModal
-          onClose={() =>
-            setShowPrintOptions(false)
-          }
-        />
-      )}
+
     </div>
   );
 }

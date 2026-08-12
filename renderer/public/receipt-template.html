@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8">
+<title>Pavati Print</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #fff; }
+
+  #controls {
+    padding: 12px 16px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #controls span { font-size: 13px; color: #555; flex: 1; }
+  #controls button {
+    background: #1a73e8;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #controls button:hover { background: #1558b0; }
+
+  #status {
+    padding: 20px;
+    text-align: center;
+    font-size: 13px;
+    color: #999;
+  }
+
+  #receipt-list { padding: 16px; }
+
+  /* ===================================================================
+     SCREEN PREVIEW: shows each card with a border + faint field outlines
+     so you can sanity-check before printing. Purely visual, has zero
+     effect on the print layout below.
+     =================================================================== */
+  .receipt-card {
+    position: relative;
+    width: 21cm;
+    height: 14.8cm;
+    margin: 0 auto 24px auto;
+    border: 1px solid #c00;
+    background: #fffdf8;
+    overflow: hidden;
+  }
+  .field {
+    position: absolute;
+    font-family: 'Noto Sans Devanagari', Arial, sans-serif;
+    color: #1a1a1a;
+    line-height: 1.15;
+  }
+  .receipt-card.guides .field {
+    outline: 1px dashed rgba(200,0,0,0.5);
+    background: rgba(255,220,0,0.10);
+  }
+
+  /* ===================================================================
+     FIELD POSITIONS
+     Physical card = 21cm x 14.8cm (A5 landscape).
+     All coordinates = top-left corner of each field, measured in cm
+     from the top-left corner of the physical card.
+     These are the calibrated positions from receipt_overlay.html,
+     already verified against the printed blank pavati.
+     =================================================================== */
+
+  .r-bookingid  { left: 6.2cm;  top: 4.00cm;  width: 5.0cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+  .r-date       { left: 16.2cm; top: 4.00cm;  width: 4.5cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+  .r-name       { left: 6.0cm;  top: 5.00cm;  width: 17.0cm; height: 0.7cm; font-size: 14pt; font-weight: bold; }
+  .r-address    { left: 2.8cm;  top: 6.00cm;  width: 18.3cm; height: 1.7cm; font-size: 12pt; font-weight: bold; }
+  .r-phone      { left: 15.2cm; top: 7.00cm;  width: 5.4cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+  /* Name of whoever updated the record in CMS -> printed just below the address block */
+  .r-updatedby  { left: 2.0cm;  top: 7.10cm;  width: 6.0cm;  height: 0.4cm; font-size: 11pt; font-style: italic; }
+
+  /* "सेवा प्रत्यर्थ अक्षरी" slot -> mapped to item.purpose, with bookingDate
+     appended in brackets, e.g. "देणगी (16-07-2026)" */
+  .r-purpose    { left: 4.7cm;  top: 8.00cm;  width: 12.2cm; height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+  /* "गोत्र" label slot */
+  .r-gotra      { left: 2.8cm;  top: 9.80cm;  width: 3.2cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+  /* orderId -> printed directly below गोत्र, same left/width */
+  .r-orderid    { left: 1.5cm;  top: 10.75cm; width: 9.0cm;  height: 0.5cm; font-size: 11pt; }
+  .r-remaining  { left: 1.5cm;  top: 11.65cm; width: 9.0cm;  height: 0.5cm; font-size: 11pt; }
+  .r-chequenumber { left: 1.5cm; top: 10.75cm; width: 9.0cm; height: 0.5cm; font-size: 11pt; }
+  .r-bankname { left: 1.5cm; top: 11.25cm; width: 9.0cm; height: 0.5cm; font-size: 11pt; }
+
+  .r-amountwords{ left: 3.0cm;  top: 8.80cm;  width: 11.7cm; height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+  /* "देयकाची पद्धत" (payment mode) slot -> mapped to item.bank */
+  .r-bank       { left: 8.7cm;  top: 9.80cm;  width: 5.6cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+  .r-amount     {
+    left: 15.5cm; top: 9.60cm; width: 3.5cm; height: 1.2cm;
+    font-size: 15pt; font-weight: bold; text-align: center;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ===================================================================
+     PRINT LAYOUT
+     =================================================================== */
+  @media print {
+    @page {
+      size: 21cm 14.8cm;
+      margin: 0;
+    }
+
+    #controls { display: none !important; }
+    #status   { display: none !important; }
+    body { margin: 0; }
+    #receipt-list { padding: 0; }
+
+    .receipt-card {
+      border: none;
+      background: transparent;
+      margin: 0;
+      position: relative;   /* must stay relative - absolute here collapses
+                                every card onto the same printed page */
+      width: 21cm;
+      height: 14.8cm;
+      overflow: hidden;
+      page-break-after: always;
+      page-break-inside: avoid;
+      break-after: page;
+      break-inside: avoid;
+    }
+    .receipt-card:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    .receipt-card.guides .field {
+      outline: none;
+      background: transparent;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <span id="summary">Waiting for data...</span>
+  <button onclick="window.print()">🖨 Print All</button>
+</div>
+
+<div id="status">Select dates and click Submit to load receipts.</div>
+<div id="receipt-list"></div>
+
+<script>
+  // window.opener: this page is opened via window.open() from reports.js.
+  // window.parent fallback kept in case this is ever embedded as an iframe instead.
+  (window.opener || window.parent).postMessage({ type: "iframeReady" }, "*");
+
+  window.addEventListener("message", function (event) {
+    try {
+      var d = event.data;
+      if (d && d.params) d = d.params;
+      if (!d || d.action !== "showReceipts") return;
+
+      var items  = d.items;
+      var list   = document.getElementById("receipt-list");
+      var status = document.getElementById("status");
+
+      list.innerHTML = "";
+
+      if (!items || items.length === 0) {
+        status.style.display = "block";
+        status.textContent   = "No receipts found for selected dates.";
+        return;
+      }
+
+      status.style.display = "none";
+
+      document.getElementById("summary").textContent =
+        items.length + " receipts  |  " + (d.from || "") + " to " + (d.to || "");
+
+      items.forEach(function (item) {
+        var amount = item.advance
+          ? "Rs. " + Number(item.advance).toLocaleString("en-IN")
+          : "";
+
+        var dateStr = item._createdDate
+          ? new Date(item._createdDate).toLocaleDateString("en-IN")
+          : "";
+
+        var amountWords = item.amountInWords
+          ? item.amountInWords
+          : (item.amount ? numberToWordsMarathi(item.amount) + " रुपये फक्त" : "");
+
+        // bookingDate formatted as DD-MM-YYYY, appended to purpose in brackets.
+        // Multi-date bookings (e.g. Abhishek/seva across several dates) list
+        // every date instead of just the single bookingDate (which the
+        // backend only fills with the earliest one, for records/sorting).
+        var bookingDateStr = (Array.isArray(item.multiDates) && item.multiDates.length > 1)
+          ? item.multiDates.slice().sort().map(formatDateDMY).join(", ")
+          : (item.bookingDate ? formatDateDMY(item.bookingDate) : "");
+        var purposeWithDate = (item.purpose || "") +
+          (bookingDateStr ? " (" + bookingDateStr + ")" : "");
+
+        var belowGotraFields = "";
+        if (item.bank === "Cheque") {
+          belowGotraFields =
+             '<div class="field r-bankname">'     + (item.payingBankName ? "Bank Name - " + item.payingBankName : "") + '</div>'+
+            '<div class="field r-chequenumber">' + (item.chequeNumber ? "Cheque Number - " + item.chequeNumber : "") + '</div>' ;
+        } else if (item.bank === "Cash") {
+          belowGotraFields = "";
+        } else {
+          belowGotraFields =
+            '<div class="field r-orderid">' + (item.orderId ? "Order Id - " + item.orderId : "") + '</div>';
+
+        }
+
+        var card = document.createElement("div");
+        card.className = "receipt-card guides"; // remove "guides" once alignment is confirmed on paper
+
+        card.innerHTML =
+          '<div class="field r-bookingid">'   + (item.bookingId || "") + '</div>' +
+          '<div class="field r-date">'        + dateStr                + '</div>' +
+          '<div class="field r-name">'        + (item.name      || "") + '</div>' +
+          '<div class="field r-address">'     + (item.address   || "") + '</div>' +
+          '<div class="field r-updatedby">' + (item.smarnarth ? "Late " + item.smarnarth + " यांचे स्मरणार्थ" : "") + '</div>' +
+          '<div class="field r-phone">'       + (item.phone     || "") + '</div>' +
+          '<div class="field r-purpose">'     + purposeWithDate         + '</div>' +
+          '<div class="field r-amountwords">' + amountWords             + '</div>' +
+          '<div class="field r-gotra">'       + (item.gotra     || "") + '</div>' +
+          belowGotraFields +
+          '<div class="field r-remaining">' + (item.remainingAmount > 0 ? "शिल्लक रक्कम- " + item.remainingAmount : "") + '</div>' +
+          '<div class="field r-bank">'        + (item.bank      || "") + '</div>' +
+          '<div class="field r-amount">'      + amount                  + '</div>' ;
+        list.appendChild(card);
+      });
+
+    } catch (e) {
+      console.error("iframe error:", e);
+    }
+  });
+
+  // Formats a date value (timestamp, ISO string, or Date) as DD-MM-YYYY
+  function formatDateDMY(value) {
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return "";
+    var dd = String(d.getDate()).padStart(2, "0");
+    var mm = String(d.getMonth() + 1).padStart(2, "0");
+    var yyyy = d.getFullYear();
+    return dd + "-" + mm + "-" + yyyy;
+  }
+
+  function numberToWordsMarathi(num) {
+    num = Math.floor(Number(num) || 0);
+    if (num === 0) return "शून्य";
+
+    var ones = ["", "एक", "दोन", "तीन", "चार", "पाच", "सहा", "सात",
+      "आठ", "नऊ", "दहा", "अकरा", "बारा", "तेरा", "चौदा",
+      "पंधरा", "सोळा", "सतरा", "अठरा", "एकोणीस"];
+
+    // Marathi uses irregular compound words for 21-99, so use a full
+    // lookup for two-digit numbers instead of "tens + ones" concatenation.
+    var twoDigitWords = [
+      "शून्य","एक","दोन","तीन","चार","पाच","सहा","सात","आठ","नऊ",
+      "दहा","अकरा","बारा","तेरा","चौदा","पंधरा","सोळा","सतरा","अठरा","एकोणीस",
+      "वीस","एकवीस","बावीस","तेवीस","चोवीस","पंचवीस","सव्वीस","सत्तावीस","अठ्ठावीस","एकोणतीस",
+      "तीस","एकतीस","बत्तीस","तेहतीस","चौतीस","पस्तीस","छत्तीस","सदतीस","अडतीस","एकोणचाळीस",
+      "चाळीस","एक्केचाळीस","बेचाळीस","त्रेचाळीस","चव्वेचाळीस","पंचेचाळीस","सेहेचाळीस","सत्तेचाळीस","अठ्ठेचाळीस","एकोणपन्नास",
+      "पन्नास","एक्कावन्न","बावन्न","त्रेपन्न","चोपन्न","पंचावन्न","छप्पन्न","सत्तावन्न","अठ्ठावन्न","एकोणसाठ",
+      "साठ","एकसष्ट","बासष्ट","त्रेसष्ट","चौसष्ट","पासष्ट","सहासष्ट","सदुसष्ट","अडुसष्ट","एकोणसत्तर",
+      "सत्तर","एक्काहत्तर","बहात्तर","त्र्याहत्तर","चौर्‍याहत्तर","पंच्याहत्तर","शहात्तर","सत्याहत्तर","अठ्ठ्याहत्तर","एकोण्याऐंशी",
+      "ऐंशी","एक्क्याऐंशी","ब्याऐंशी","त्र्याऐंशी","चौऱ्याऐंशी","पंच्याऐंशी","शहाऐंशी","सत्त्याऐंशी","अठ्ठ्याऐंशी","एकोणनव्वद",
+      "नव्वद","एक्क्याण्णव","ब्याण्णव","त्र्याण्णव","चौऱ्याण्णव","पंच्याण्णव","शहाण्णव","सत्त्याण्णव","अठ्ठ्याण्णव","नव्याण्णव"
+    ];
+
+    function twoDigits(n) { return twoDigitWords[n]; }
+    function threeDigits(n) {
+      var h = Math.floor(n / 100);
+      var r = n % 100;
+      return (h ? ones[h] + "शे" + (r ? " " : "") : "") + (r ? twoDigits(r) : "");
+    }
+
+    var crore = Math.floor(num / 10000000); num %= 10000000;
+    var lakh  = Math.floor(num / 100000);    num %= 100000;
+    var thousand = Math.floor(num / 1000);   num %= 1000;
+    var rest = num;
+
+    var parts = [];
+    if (crore) parts.push(threeDigits(crore) + " कोटी");
+    if (lakh) parts.push(threeDigits(lakh) + " लाख");
+    if (thousand) parts.push(threeDigits(thousand) + " हजार");
+    if (rest) parts.push(threeDigits(rest));
+
+    return parts.join(" ").trim();
+  }
+</script>
+</body>
+</html>

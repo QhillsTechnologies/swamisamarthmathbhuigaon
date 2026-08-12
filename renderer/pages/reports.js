@@ -90,10 +90,6 @@ const [selectedIds, setSelectedIds] = useState(new Set());
      CALCULATE SUMMARY FROM FILTERED DATA
   ====================================================== */
   const getCalculatedStats = (data = reportData) => {
-    const uniqueGroups = new Set(
-      data.map((item) => item.bookingGroupId || item._id)
-    );
-
     const totalRevenue = data
       .filter((item) => (item.status || "").toLowerCase().trim() === "approved")
       .reduce((sum, item) => sum + Number(item.paidAmount || item.advance || 0), 0);
@@ -111,7 +107,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
 
     return {
       totalRevenue,
-      totalBookings: uniqueGroups.size,
+      totalBookings: data.length,
       pendingDues,
     };
   };
@@ -119,7 +115,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
   /* ======================================================
      CSV DOWNLOAD
   ====================================================== */
-  const handleDownload = (data = []) => {
+  const handleDownload = async (data = []) => {
     try {
       if (!data || data.length === 0) {
         setReportMsg({ text: "No report data found for the selected filters.", type: "error" });
@@ -130,7 +126,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
 
       const headers = [
         "Booking ID", "Name", "Phone", "Purpose",
-        "Receipt Type", "Total Amount", "Paid Amount",
+        "Receipt Type", "Bank", "Total Amount", "Paid Amount",
         "Remaining Amount", "Status", "Booking Date",
       ];
 
@@ -141,13 +137,12 @@ const [selectedIds, setSelectedIds] = useState(new Set());
         item.phone || "",
         item.purpose || "",
         item.receiptType || "",
+        item.bank || item.paymentType || "",
         item.amount || 0,
         item.advance || 0,
         item.remainingAmount || 0,
         item.status || "",
-        item.bookingDate
-          ? new Date(item.bookingDate).toLocaleDateString("en-GB")
-          : "",
+        formatBookingDateDisplay(item, ""),
       ]);
 
       const csvContent = [headers, ...rows]
@@ -156,13 +151,32 @@ const [selectedIds, setSelectedIds] = useState(new Set());
         )
         .join("\n");
 
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, "0");
+      const d = String(today.getDate()).padStart(2, "0");
+      const filename = `booking-report-${y}-${m}-${d}.csv`;
+
+      if (window.ipc?.invoke) {
+        // Save via the main process so the file always keeps its .csv
+        // extension — a plain <a download> blob link doesn't reliably
+        // preserve the extension in the packaged Electron build.
+        const result = await window.ipc.invoke("save-csv-report", {
+          filename,
+          content: csvContent,
+        });
+        if (!result?.success && !result?.canceled) {
+          setReportMsg({ text: result?.error || "Failed to download report.", type: "error" });
+        }
+        return;
+      }
+
+      const BOM = "﻿";
+      const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      const today = new Date().toISOString().split("T")[0];
-
       link.href = url;
-      link.download = `booking-report-${today}.csv`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -181,7 +195,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
       <div className="dashboard">
         <Sidebar />
         <div className="main">
-          <Header title="Reports / अहवाल" />
+          <Header title="अहवाल / Reports" />
           <p style={{ padding: "20px" }}>Loading reports...</p>
         </div>
       </div>
@@ -325,10 +339,28 @@ const [selectedIds, setSelectedIds] = useState(new Set());
           min="0"
           disabled={!amountOperator}
           onChange={(e) => setAmountValue(e.target.value)}
+          onWheel={(e) => e.target.blur()}
         />
       ),
     },
   ];
+
+  // Multi-date bookings (e.g. Abhishek/seva booked across several dates)
+  // store all of them in item.multiDates — show every one instead of just
+  // the single bookingDate (which the backend only fills with the earliest
+  // date, for records/sorting).
+  const formatBookingDateDisplay = (item, emptyValue = "-") => {
+    if (Array.isArray(item.multiDates) && item.multiDates.length > 1) {
+      return item.multiDates
+        .slice()
+        .sort()
+        .map((d) => new Date(d).toLocaleDateString("en-GB"))
+        .join(", ");
+    }
+    return item.bookingDate
+      ? new Date(item.bookingDate).toLocaleDateString("en-GB")
+      : emptyValue;
+  };
 
   // ── Reusable table column config ──
   // Instead of repeating <td> blocks, define columns as data
@@ -343,10 +375,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
     { header: "Status",       render: (item) => item.status || "-" },
     {
       header: "Date",
-      render: (item) =>
-        item.bookingDate
-          ? new Date(item.bookingDate).toLocaleDateString("en-GB")
-          : "-",
+      render: (item) => formatBookingDateDisplay(item),
     },
   ];
 
@@ -372,16 +401,37 @@ const [selectedIds, setSelectedIds] = useState(new Set());
   };
 
   const allPagedSelected =
-    pagedData.length > 0 && pagedData.every((item) => selectedIds.has(item._id));
+    displayData.length > 0 && displayData.every((item) => selectedIds.has(item._id));
 
   const toggleSelectAll = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (allPagedSelected) pagedData.forEach((item) => next.delete(item._id));
-      else pagedData.forEach((item) => next.add(item._id));
+      if (allPagedSelected) displayData.forEach((item) => next.delete(item._id));
+      else displayData.forEach((item) => next.add(item._id));
       return next;
     });
   };
+
+  const buildPrintItem = (item) => ({
+    bookingId:      item.bookingId  || "",
+    _createdDate:   item.createdAt || item._createdDate || "",
+    bookingDate:    item.bookingDate || "",
+    multiDates:     item.multiDates  || [],
+    name:           item.name       || "",
+    phone:          item.phone      || "",
+    address:        item.address    || "",
+    purpose:        item.purpose    || "",
+    gotra:          item.gotra      || "",
+    amount:         item.paidAmount ?? item.advance ?? item.amount ?? 0,
+    advance:        item.paidAmount ?? item.advance ?? item.amount ?? 0,
+    bank:           item.bank       || item.paymentType || "",
+    smarnarth:      item.smarnarth  || "",
+    remainingAmount: item.remainingAmount || 0,
+    orderId:        item.orderId || item._id || "",
+    chequeNumber:   item.chequeNumber || "",
+    payingBankName: item.payingBankName || "",
+    panCard:        item.panCard || "",
+  });
 
   const handlePrintSelected = () => {
     const rowsToPrint = displayData.filter((item) => selectedIds.has(item._id));
@@ -390,44 +440,36 @@ const [selectedIds, setSelectedIds] = useState(new Set());
       return;
     }
 
-    const printWindow = window.open("", "_blank");
-    const headers = activeColumns.map((c) => c.header);
+    // 80G bookings use the new pre-printed 80G pavati layout (Receipt80G);
+    // everything else keeps printing on the existing pavati template.
+    const rows80G   = rowsToPrint.filter((item) => item.is80G);
+    const rowsNormal = rowsToPrint.filter((item) => !item.is80G);
 
-    const rowsHtml = rowsToPrint
-      .map(
-        (item) =>
-          `<tr>${activeColumns
-            .map((c) => `<td>${c.render(item)}</td>`)
-            .join("")}</tr>`
-      )
-      .join("");
+    if (rowsNormal.length > 0) {
+      const items = rowsNormal.map(buildPrintItem);
+      const templateUrl = `${window.location.origin}/receipt-template.html`;
+      const printWin = window.open(templateUrl, "_blank");
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Booking Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 13px; }
-            th { background: #f3f4f6; }
-          </style>
-        </head>
-        <body>
-          <h2>Swami Samarth Math — Booking Report</h2>
-          <table>
-            <thead>
-              <tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
-        </body>
-      </html>
-    `);
+      const handler = (event) => {
+        if (event.data && event.data.type === "iframeReady") {
+          window.removeEventListener("message", handler);
+          printWin.postMessage(
+            { action: "showReceipts", items, from: fromDate, to: toDate },
+            "*"
+          );
+        }
+      };
+      window.addEventListener("message", handler);
+    }
 
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    if (rows80G.length > 0) {
+      const items = rows80G.map(buildPrintItem);
+      localStorage.setItem(
+        "bulkReceipts80G",
+        JSON.stringify({ items, from: fromDate, to: toDate })
+      );
+      window.open(`${window.location.origin}/receipt-bulk-80g`, "_blank");
+    }
   };
 
   return (
@@ -435,7 +477,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
       <Sidebar />
 
       <div className="main">
-        <Header title="Reports / अहवाल" />
+        <Header title="अहवाल / Reports" />
 
         {/* INLINE MESSAGE */}
         {reportMsg.text && (
@@ -446,8 +488,8 @@ const [selectedIds, setSelectedIds] = useState(new Set());
             borderRadius: "6px", padding: "8px 12px", margin: "10px 0", fontSize: "13px",
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
-            <span>{reportMsg.type === "success" ? "✓" : "⚠️"} {reportMsg.text}</span>
-            <button onClick={() => setReportMsg({ text: "", type: "" })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "14px" }}>✕</button>
+            <span>{reportMsg.text}</span>
+            <button onClick={() => setReportMsg({ text: "", type: "" })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "14px" }}>x</button>
           </div>
         )}
 
@@ -525,12 +567,18 @@ const [selectedIds, setSelectedIds] = useState(new Set());
               className="download-report-btn"
               onClick={handlePrintSelected}
             >
-              🖨️ Print Selected
+              Print Selected
             </button>
 
             <button
               className="download-report-btn"
-              onClick={() => handleDownload(displayData)}
+              onClick={() =>
+                handleDownload(
+                  selectedIds.size > 0
+                    ? displayData.filter((item) => selectedIds.has(item._id))
+                    : displayData
+                )
+              }
             >
               ⬇ Download Report
             </button>

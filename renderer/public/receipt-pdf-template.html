@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+<!-- Bundled locally (renderer/public/vendor) instead of loaded live from
+     cdnjs — these two scripts are required for the PDF generation call below
+     to exist at all; if they fail to load (no/blocked internet), the whole
+     receipt-upload + SMS pipeline silently dies with nothing to show for it. -->
+<script src="/vendor/html2canvas.min.js"></script>
+<script src="/vendor/jspdf.umd.min.js"></script>
+<style>
+  *{margin:0;box-sizing:border-box;font-family:'Noto Sans Devanagari',Arial,sans-serif;}
+  /* Canvas = 2x the native resolution of receipt-pdf-bg.png (864x615) for crisp text. */
+  #r{position:relative;width:1728px;height:1230px;overflow:visible;}
+
+  /* The background is split into two flat images at native y=272 (2x: 544px) —
+     a blank gap between the "पत्ता" and "भ्रमणध्वनी" label rows, verified against
+     the source PNG. #bg-top never moves; #bg-bottom (labels, borders, footer,
+     signature, QR box — everything below the address) shifts down by exactly
+     however much the address grows past one line, via JS, so the whole lower
+     half of the card stays visually attached to its labels instead of drifting
+     apart from wrapped address text. When the address fits on one line,
+     shift = 0 and this renders pixel-identical to the original single image. */
+  #bg-top{position:absolute;top:0;left:0;width:1728px;height:544px;}
+  #bg-bottom{position:absolute;top:544px;left:0;width:1728px;height:686px;}
+  /* Fills the gap in the card's side border when #bg-bottom shifts down —
+     color + x-position pixel-matched to the border in receipt-pdf-bg.png.
+     Height is 0 (invisible) until JS grows it to exactly the shift amount. */
+  #border-fill-l{position:absolute;top:544px;left:58px;width:22px;height:0;background:#2E3092;z-index:1;}
+  #border-fill-r{position:absolute;top:544px;left:1688px;width:22px;height:0;background:#2E3092;z-index:1;}
+
+  .f{
+    position:absolute;font-size:34px;font-weight:700;color:#1a1a6e;line-height:1;
+    white-space:nowrap;z-index:2;
+    /* line-height:1 packs rows tightly (see note below), but Devanagari matras/
+       conjuncts (ौ in पौर्णिमा, the क्का cluster in एक्कावन्न, etc.) render taller
+       than that compressed line box, so hidden overflow was clipping their tops.
+       Clip only horizontally (still needed for text-overflow ellipsis below on
+       long values) and let vertical ink spill freely — rows are spaced with
+       enough of a gap that this never bleeds into the next line. */
+    overflow-x:hidden;overflow-y:visible;text-overflow:ellipsis;
+  }
+
+  /* Positions measured by pixel-scanning receipt-pdf-bg.png for the exact
+     start/end of each label's text (not eyeballed) — doubled for this 2x canvas.
+     Rows are packed tightly (9-20px gaps between lines in the source image), so
+     line-height:1 above is required — default line-height pushes text into the
+     next row. Keep in sync if the background image ever changes.
+     "top" for every field below is set to the label's own ink-start row, so
+     the value sits in front of (beside) its label instead of floating above it. */
+  #no{top:338px;left:540px;width:580px;font-size:32px;}
+  #dt{top:338px;left:1360px;width:280px;font-size:32px;}
+  #nm{top:410px;left:480px;width:1160px;font-size:38px;}
+
+  /* Address is allowed to wrap (unlike every other field, which is a single
+     fixed-width line) — everything below it shifts down at runtime to match
+     however many lines it actually takes. Smaller font so most real addresses
+     still fit on one line; height:44px is the single-line budget that lines
+     up exactly with the #bg-bottom slice boundary below (500+44=544). */
+  #ad{
+    top:500px;left:220px;width:1420px;font-size:34px;line-height:1.2;
+    white-space:normal;overflow:visible;text-overflow:unset;height:auto;
+  }
+
+  /* Everything from here down belongs to the #bg-bottom slice and gets the
+     same runtime "shift" applied as #bg-bottom itself — base tops below are
+     exactly as originally measured against the unshifted background. */
+
+  /* "Late X यांचे स्मरणार्थ" — sits below the address, same row as the phone
+     number (left side; #mb is right-aligned so the two never collide). */
+  #sm{top:564px;left:220px;width:1000px;font-size:30px;font-style:italic;}
+  #mb{top:564px;left:1250px;width:390px;font-size:32px;}
+  /* line-height bumped from the base .f value of 1 — Devanagari matras/
+     conjuncts (े, ि, क्का, etc.) extend above a font-size-tight line box and
+     clip at the top with html2canvas even though overflow-y is visible. */
+  #pu{top:654px;left:356px;width:960px;font-size:34px;line-height:1.2;}
+  #wd{top:726px;left:230px;width:920px;font-size:32px;line-height:1.2;}
+  #gt{top:804px;left:210px;width:222px;font-size:32px;line-height:1.2;}
+  #pm{top:804px;left:730px;width:428px;font-size:28px;}
+  /* PAN card number — 80G bookings only. Sits below गोत्र with a deliberate
+     gap (not flush against it), same left as गोत्र. #chq below is pushed
+     down further at runtime when this is shown, so the two never collide. */
+  #pan{top:854px;left:210px;width:580px;font-size:28px;}
+  #am{
+    top:790px;left:1270px;width:330px;height:80px;font-size:38px;
+    text-align:center;color:#111;display:flex;align-items:center;justify-content:center;
+  }
+  /* Pre-printed blank box on the paper (native px ~394,441 to ~490,534,
+     doubled for this 2x canvas) — reserved for the QR code. */
+  #qr{position:absolute;top:890px;left:799px;width:170px;height:170px;z-index:2;object-fit:contain;}
+
+  /* Cheque bank name + number — shown below the गोत्र/देयकाची पद्धत row,
+     left-aligned under it, only when the payment method is Cheque. Base top
+     is pushed further down at runtime (see PAN_EXTRA in the script) when a
+     PAN number is also shown above it, so the two never collide. */
+  #chq{top:855px;left:210px;width:580px;font-size:28px;line-height:1.3;white-space:normal;}
+
+  /* Remaining/due amount — same row #chq would start at when there's no
+     cheque details to show; pushed further down at runtime (see REM_EXTRA
+     in the script) when cheque bank name + number are shown above it. */
+  #rem{top:855px;left:210px;width:580px;font-size:28px;color:#b91c1c;}
+</style>
+</head>
+<body>
+<div id="r">
+  <img id="bg-top" src="/receipt-pdf-bg-top.png">
+  <img id="bg-bottom" src="/receipt-pdf-bg-bottom.png">
+  <div id="border-fill-l"></div>
+  <div id="border-fill-r"></div>
+  <img id="qr" src="/receipt-pdf-qr.png">
+  <div class="f" id="no"></div>
+  <div class="f" id="dt"></div>
+  <div class="f" id="nm"></div>
+  <div class="f" id="ad"></div>
+  <div class="f" id="sm"></div>
+  <div class="f" id="mb"></div>
+  <div class="f" id="pu"></div>
+  <div class="f" id="wd"></div>
+  <div class="f" id="gt"></div>
+  <div class="f" id="pm"></div>
+  <div class="f" id="am"></div>
+  <div class="f" id="pan"></div>
+  <div class="f" id="chq"></div>
+  <div class="f" id="rem"></div>
+</div>
+<script>
+function loadImg(img){
+  return new Promise((res)=>{
+    if(img.complete && img.naturalWidth) return res();
+    img.onload = res; img.onerror = res;
+  });
+}
+
+function formatDateDMY(value) {
+  if (!value) return "";
+  var d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  var dd = String(d.getDate()).padStart(2, "0");
+  var mm = String(d.getMonth() + 1).padStart(2, "0");
+  var yyyy = d.getFullYear();
+  return dd + "-" + mm + "-" + yyyy;
+}
+
+function numberToWordsMarathi(num) {
+  num = Math.floor(Number(num) || 0);
+  if (num === 0) return "शून्य";
+
+  var ones = ["", "एक", "दोन", "तीन", "चार", "पाच", "सहा", "सात",
+    "आठ", "नऊ", "दहा", "अकरा", "बारा", "तेरा", "चौदा",
+    "पंधरा", "सोळा", "सतरा", "अठरा", "एकोणीस"];
+
+  var twoDigitWords = [
+    "शून्य","एक","दोन","तीन","चार","पाच","सहा","सात","आठ","नऊ",
+    "दहा","अकरा","बारा","तेरा","चौदा","पंधरा","सोळा","सतरा","अठरा","एकोणीस",
+    "वीस","एकवीस","बावीस","तेवीस","चोवीस","पंचवीस","सव्वीस","सत्तावीस","अठ्ठावीस","एकोणतीस",
+    "तीस","एकतीस","बत्तीस","तेहतीस","चौतीस","पस्तीस","छत्तीस","सदतीस","अडतीस","एकोणचाळीस",
+    "चाळीस","एक्केचाळीस","बेचाळीस","त्रेचाळीस","चव्वेचाळीस","पंचेचाळीस","सेहेचाळीस","सत्तेचाळीस","अठ्ठेचाळीस","एकोणपन्नास",
+    "पन्नास","एक्कावन्न","बावन्न","त्रेपन्न","चोपन्न","पंचावन्न","छप्पन्न","सत्तावन्न","अठ्ठावन्न","एकोणसाठ",
+    "साठ","एकसष्ट","बासष्ट","त्रेसष्ट","चौसष्ट","पासष्ट","सहासष्ट","सदुसष्ट","अडुसष्ट","एकोणसत्तर",
+    "सत्तर","एक्काहत्तर","बहात्तर","त्र्याहत्तर","चौर्‍याहत्तर","पंच्याहत्तर","शहात्तर","सत्याहत्तर","अठ्ठ्याहत्तर","एकोण्याऐंशी",
+    "ऐंशी","एक्क्याऐंशी","ब्याऐंशी","त्र्याऐंशी","चौऱ्याऐंशी","पंच्याऐंशी","शहाऐंशी","सत्त्याऐंशी","अठ्ठ्याऐंशी","एकोणनव्वद",
+    "नव्वद","एक्क्याण्णव","ब्याण्णव","त्र्याण्णव","चौऱ्याण्णव","पंच्याण्णव","शहाण्णव","सत्त्याण्णव","अठ्ठ्याण्णव","नव्याण्णव"
+  ];
+
+  function twoDigits(n) { return twoDigitWords[n]; }
+  function threeDigits(n) {
+    var h = Math.floor(n / 100);
+    var r = n % 100;
+    return (h ? ones[h] + "शे" + (r ? " " : "") : "") + (r ? twoDigits(r) : "");
+  }
+
+  var crore = Math.floor(num / 10000000); num %= 10000000;
+  var lakh  = Math.floor(num / 100000);    num %= 100000;
+  var thousand = Math.floor(num / 1000);   num %= 1000;
+  var rest = num;
+
+  var parts = [];
+  if (crore) parts.push(threeDigits(crore) + " कोटी");
+  if (lakh) parts.push(threeDigits(lakh) + " लाख");
+  if (thousand) parts.push(threeDigits(thousand) + " हजार");
+  if (rest) parts.push(threeDigits(rest));
+
+  return parts.join(" ").trim();
+}
+
+// Base (unshifted) tops of every element that belongs to the #bg-bottom slice —
+// matches the CSS above exactly. Read back out so the shift math below has a
+// single source of truth instead of duplicating numbers.
+const BASE_TOP = {};
+['bg-bottom', 'sm', 'mb', 'pu', 'wd', 'gt', 'pm', 'am', 'qr', 'pan', 'chq', 'rem'].forEach((id) => {
+  BASE_TOP[id] = parseFloat(getComputedStyle(document.getElementById(id)).top);
+});
+const CANVAS_H = 1230;
+const PDF_W_CM = 18.5, PDF_H_CM = 13.17;
+// Single-line address budget in 2x-canvas px — lines up with the #bg-bottom
+// slice boundary (#ad top 500 + 44 = 544). Must match #ad's font-size/line-height.
+const AD_LINE_BUDGET = 44;
+
+window.onmessage = async (e) => {
+  const d = e.data;
+  if (!d || !d.bookingId) return;
+  try {
+    await renderAndSendPdf(d);
+  } catch (err) {
+    // Without this catch, a failure anywhere below (e.g. html2canvas/jsPDF
+    // not defined because their <script> tags failed to load) throws inside
+    // an unawaited async handler — it never reaches the parent window's
+    // console, and window.parent.postMessage below never runs, so the
+    // upload/SMS pipeline just hangs with no visible error anywhere.
+    console.error('[receipt-pdf-template] PDF generation failed:', err);
+  }
+};
+
+async function renderAndSendPdf(d) {
+  const t0 = Date.now();
+  const elapsed = () => `${Date.now() - t0}ms`;
+  console.log(`[receipt-pdf-template] start rendering bookingId=${d.bookingId}`);
+  document.getElementById('no').textContent = d.bookingId;
+  document.getElementById('dt').textContent = formatDateDMY(d._createdDate);
+  document.getElementById('nm').textContent = d.name || '';
+  document.getElementById('ad').textContent = d.address || '';
+  // Memorial line — shown below the address, same as receipt-template.html's
+  // r-updatedby field, alongside (not instead of) the name above.
+  document.getElementById('sm').textContent = d.smarnarth
+    ? ('Late ' + d.smarnarth + ' यांचे स्मरणार्थ')
+    : '';
+  document.getElementById('mb').textContent = d.phone || '';
+  // bookingDate (event/seva date) appended in brackets after the purpose —
+  // same convention as receipt-template.html and Receipt80G.
+  // Multi-date bookings (e.g. Abhishek/seva across several dates) list every
+  // date here instead of just the single bookingDate (which the backend only
+  // fills with the earliest one, for records/sorting).
+  const bookingDateStr = Array.isArray(d.multiDates) && d.multiDates.length > 1
+    ? d.multiDates.slice().sort().map(formatDateDMY).join(', ')
+    : formatDateDMY(d.bookingDate);
+  document.getElementById('pu').textContent = (d.purpose || '') + (bookingDateStr ? ' (' + bookingDateStr + ')' : '');
+  document.getElementById('wd').textContent = numberToWordsMarathi(d.amount) + ' रुपये फक्त';
+  document.getElementById('gt').textContent = d.gotra || '';
+  document.getElementById('pm').textContent = d.paymentMethod || '';
+  document.getElementById('am').textContent = Number(d.amount || 0).toLocaleString('en-IN');
+
+  // PAN card number — 80G bookings only, shown below गोत्र with a gap.
+  document.getElementById('pan').textContent = d.panCard ? ('PAN - ' + d.panCard) : '';
+
+  // Cheque bank name + number, shown below the rupee amount box, only for
+  // cheque payments.
+  document.getElementById('chq').innerHTML = d.paymentMethod === 'Cheque'
+    ? ((d.payingBankName ? 'Bank Name - ' + d.payingBankName + '<br>' : '') +
+       (d.chequeNumber ? 'Cheque Number - ' + d.chequeNumber : ''))
+    : '';
+
+  // Remaining/due amount — same field shown below the cheque number on the
+  // printed receipt (receipt-template.html's r-remaining).
+  document.getElementById('rem').textContent = d.remainingAmount > 0
+    ? ('शिल्लक रक्कम- ' + Number(d.remainingAmount).toLocaleString('en-IN'))
+    : '';
+
+  // When a PAN number is shown, push the cheque-details block down further
+  // so it never sits flush against (or overlaps) the PAN line above it.
+  const PAN_EXTRA = d.panCard ? 60 : 0;
+  // Remaining amount sits below the cheque details block — push it down
+  // further still when that block is showing (more when it's two lines,
+  // bank name + cheque number, than when it's just the cheque number).
+  const CHQ_EXTRA = d.paymentMethod === 'Cheque'
+    ? (d.payingBankName ? 70 : 35)
+    : 0;
+
+  await document.fonts.ready;
+  console.log(`[receipt-pdf-template] fonts ready (${elapsed()})`);
+  await loadImg(document.getElementById('bg-top'));
+  await loadImg(document.getElementById('bg-bottom'));
+  await loadImg(document.getElementById('qr'));
+  console.log(`[receipt-pdf-template] background images loaded (${elapsed()})`);
+
+  // Address may have wrapped onto 2+ lines — push everything below it down
+  // by exactly the extra height, so labels (baked into #bg-bottom) stay
+  // attached to their values instead of the address text running into them.
+  const adEl = document.getElementById('ad');
+  const shift = Math.max(0, adEl.offsetHeight - AD_LINE_BUDGET);
+
+  Object.keys(BASE_TOP).forEach((id) => {
+    const extra = id === 'chq' ? PAN_EXTRA : id === 'rem' ? PAN_EXTRA + CHQ_EXTRA : 0;
+    document.getElementById(id).style.top = (BASE_TOP[id] + shift + extra) + 'px';
+  });
+  document.getElementById('border-fill-l').style.height = shift + 'px';
+  document.getElementById('border-fill-r').style.height = shift + 'px';
+
+  const rEl = document.getElementById('r');
+  const canvasHeight = CANVAS_H + shift;
+  rEl.style.height = canvasHeight + 'px';
+
+  await new Promise(r => setTimeout(r, 300));
+  const canvas = await html2canvas(rEl, { scale: 1, backgroundColor: '#ffffff' });
+  console.log(`[receipt-pdf-template] html2canvas render done (${elapsed()})`);
+  const img = canvas.toDataURL('image/jpeg', 0.92);
+  const { jsPDF } = window.jspdf;
+  // Page grows taller by the same proportion as the canvas — width is untouched.
+  const pdfHeight = PDF_H_CM * (canvasHeight / CANVAS_H);
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'cm', format: [PDF_W_CM, pdfHeight] });
+  pdf.addImage(img, 'JPEG', 0, 0, PDF_W_CM, pdfHeight);
+  console.log(`[receipt-pdf-template] jsPDF built, posting back to parent (${elapsed()}) — total PDF generation time`);
+  window.parent.postMessage({ pdf: pdf.output('datauristring') }, '*');
+}
+</script>
+</body>
+</html>

@@ -286,7 +286,7 @@ return (
 
       {fetchError && (
         <div style={{ background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "6px", color: "#dc2626", padding: "8px 12px", margin: "10px 0", fontSize: "13px" }}>
-          ⚠️ {fetchError}
+          {fetchError}
         </div>
       )}
 
@@ -417,7 +417,7 @@ return (
                             )
                           }
                         >
-                          ✏️ Edit
+                          Edit
                         </button>
                       </div>
                     )}

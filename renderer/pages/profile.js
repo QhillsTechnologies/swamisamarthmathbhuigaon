@@ -66,7 +66,7 @@ function Profile() {
       <div className="dashboard">
         <Sidebar />
         <div className="main">
-          <Header title="My Profile / प्रोफाइल" />
+          <Header title="प्रोफाइल / My Profile" />
           <div style={styles.loadingWrap}>
             <div style={styles.spinner} />
             <p style={{ color: "#9ca3af", marginTop: "12px" }}>Loading profile...</p>
@@ -80,7 +80,7 @@ function Profile() {
     <div className="dashboard">
       <Sidebar />
       <div className="main">
-        <Header title="My Profile / प्रोफाइल" />
+        <Header title="प्रोफाइल / My Profile" />
 
         <div style={styles.pageWrap}>
 
@@ -129,9 +129,8 @@ function Profile() {
 
             {/* Header */}
             <div style={styles.editCardHeader}>
-              <div style={styles.editCardHeaderIcon}>✏️</div>
               <div>
-                <p style={styles.editCardTitle}>Edit Profile / प्रोफाइल संपादित करा</p>
+                <p style={styles.editCardTitle}>प्रोफाइल संपादित करा / Edit Profile</p>
                 <p style={styles.editCardSub}>Update your name and phone number</p>
               </div>
             </div>
@@ -139,7 +138,7 @@ function Profile() {
             <div style={styles.divider} />
 
             {/* Read-only fields */}
-            <div style={styles.sectionTitle}>📋 Account Information</div>
+            <div style={styles.sectionTitle}>Account Information</div>
             <div style={styles.fieldsGrid}>
               {[
                 { label: "Staff ID", value: form.staffId },
@@ -157,7 +156,7 @@ function Profile() {
             <div style={styles.divider} />
 
             {/* Editable fields */}
-            <div style={styles.sectionTitle}>✏️ Editable Fields</div>
+            <div style={styles.sectionTitle}>Editable Fields</div>
             <div style={styles.editableGrid}>
               {[
                 { label: "Full Name", name: "name",  placeholder: "Enter your name"  },
@@ -185,7 +184,7 @@ function Profile() {
             </div>
 
             <p style={styles.hint}>
-              ℹ️ Staff ID, Email, Role and Status are managed by Admin and cannot be changed here.
+              Staff ID, Email, Role and Status are managed by Admin and cannot be changed here.
             </p>
 
             <div style={styles.divider} />
@@ -193,7 +192,7 @@ function Profile() {
             {/* Error message */}
             {profileError && (
               <div style={{ background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "8px", color: "#dc2626", padding: "10px 14px", margin: "8px 0", fontSize: "13px" }}>
-                ⚠️ {profileError}
+                {profileError}
               </div>
             )}
 
@@ -204,13 +203,13 @@ function Profile() {
               disabled={saving}
               style={{ marginTop: "4px" }}
             >
-              {saving ? "Saving..." : saved ? "✅ Profile Updated!" : "💾 Update Profile"}
+              {saving ? "Saving..." : saved ? "Profile Updated!" : "Update Profile"}
             </button>
 
             {/* Success toast */}
             {saved && (
               <div style={styles.successToast}>
-                ✅ Profile updated successfully!
+                Profile updated successfully!
               </div>
             )}
           </div>
@@ -345,18 +344,6 @@ const styles = {
     alignItems: "center",
     gap: "12px",
     marginBottom: "16px",
-  },
-  editCardHeaderIcon: {
-    width: "40px",
-    height: "40px",
-    background: "#fff7ed",
-    border: "1px solid #fed7aa",
-    borderRadius: "12px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "18px",
-    flexShrink: 0,
   },
   editCardTitle: {
     fontSize: "15px",

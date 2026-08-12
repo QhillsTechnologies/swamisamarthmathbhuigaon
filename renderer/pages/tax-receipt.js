@@ -1,18 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import QRCode from "qrcode";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import DevoteeForm from "../components/DevoteeForm";
 import PurposeDropdown from "../components/PurposeDropdown";
 import apiRequest from "../services/api";
 
+const ORDER_POLL_INTERVAL_MS = 3000;
+const ORDER_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+
 /* Bank options — no Cash */
 const ALL_BANKS = [
-  { id: "ICICI Bank", label: "ICICI", icon: "🏦" },
-  { id: "BCCB Bank",  label: "BCCB",  icon: "🏛️" },
-  { id: "SBI Bank",   label: "SBI",   icon: "🏧" },
-  { id: "Cash",       label: "Cash",  icon: "💵", isCash: true },
-  { id: "Cheque",     label: "Cheque",icon: "📝", isCheque: true },
+  { id: "ICICI Bank", label: "ICICI" },
+  { id: "BCCB Bank",  label: "BCCB" },
+  { id: "SBI Bank",   label: "SBI" },
+  { id: "Cash",       label: "Cash",   isCash: true },
+  { id: "Card",       label: "Card",   isCard: true },
+  { id: "Cheque",     label: "Cheque", isCheque: true },
 ];
 
 export default function TaxReceipt() {
@@ -24,12 +29,15 @@ export default function TaxReceipt() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Online payment (ICICI / SBI / BCCB via Cashfree)
+  // Online payment (ICICI / SBI / BCCB via Cashfree) — QR shown on a
+  // customer-facing display device, paid from the customer's own phone.
   const [showPayment, setShowPayment] = useState(false);
-  const [paymentSessionId, setPaymentSessionId] = useState("");
   const [pendingBookingId, setPendingBookingId] = useState("");
-  const cfReadyRef = useRef(false);
   const pendingBookingPayloadRef = useRef(null);
+  const pollTimerRef = useRef(null);
+  const pollStartRef = useRef(0);
+  const [displayUrl, setDisplayUrl] = useState("");
+  const [displayUrlQr, setDisplayUrlQr] = useState("");
 
   // Cheque fields
   const [payingBankName, setPayingBankName] = useState("");
@@ -56,47 +64,84 @@ export default function TaxReceipt() {
   const validateEmail = (e) => { if (!e?.trim()) return true; return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()); };
   const validatePan   = (p) => /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(p.trim().toUpperCase());
 
-  // Load Cashfree JS SDK once
+  const stopPaymentWait = () => {
+    clearTimeout(pollTimerRef.current);
+    setShowPayment(false);
+    window.ipc?.send?.("display-reset");
+  };
+
+  const finalizePaymentSuccess = () => {
+    clearTimeout(pollTimerRef.current);
+    const bookingPayload = pendingBookingPayloadRef.current || {};
+    localStorage.setItem("lastBooking", JSON.stringify({
+      ...bookingPayload,
+      bookingId: pendingBookingId,
+      bank: "UPI",
+    }));
+    localStorage.removeItem("bookingForm");
+    window.ipc?.send?.("display-payment-success", { amount: bookingPayload.advance });
+    setShowPayment(false);
+    router.push(`/booking-success?id=${encodeURIComponent(pendingBookingId)}`);
+  };
+
+  // Poll the booking's payment status while the QR is on the customer
+  // display — the payment itself completes on the customer's own phone, so
+  // there's no local callback to hook into.
   useEffect(() => {
-    if (document.getElementById("cashfree-sdk")) { cfReadyRef.current = true; return; }
-    const s = document.createElement("script");
-    s.id = "cashfree-sdk";
-    s.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
-    s.onload = () => { cfReadyRef.current = true; };
-    document.head.appendChild(s);
+    if (!showPayment || !pendingBookingId) return;
+
+    pollStartRef.current = Date.now();
+    let cancelled = false;
+
+    const poll = async () => {
+      if (cancelled) return;
+      const elapsedMs = Date.now() - pollStartRef.current;
+      try {
+        const res = await apiRequest(`/payment_status?orderId=${encodeURIComponent(pendingBookingId)}&bank=${encodeURIComponent(selectedBank)}`);
+        const status = res?.status;
+        console.log(`[payment-poll] orderId=${pendingBookingId} elapsedMs=${elapsedMs} status=${status}`);
+
+        if (status === "PAID") {
+          console.log(`[payment-poll] PAID after elapsedMs=${elapsedMs} (${(elapsedMs / 1000).toFixed(1)}s) orderId=${pendingBookingId}`);
+          finalizePaymentSuccess();
+          return;
+        }
+        if (status === "EXPIRED" || status === "TERMINATED" || status === "CANCELLED") {
+          console.log(`[payment-poll] ${status} after elapsedMs=${elapsedMs} orderId=${pendingBookingId}`);
+          setErrorMsg("Payment was not completed (expired or cancelled). Please try again.");
+          stopPaymentWait();
+          return;
+        }
+      } catch (err) {
+        console.error(`[payment-poll] network error elapsedMs=${elapsedMs} orderId=${pendingBookingId}`, err);
+      }
+
+      if (Date.now() - pollStartRef.current > ORDER_POLL_TIMEOUT_MS) {
+        console.log(`[payment-poll] TIMEOUT after elapsedMs=${elapsedMs} orderId=${pendingBookingId}`);
+        setErrorMsg("Payment timed out. Please try again.");
+        stopPaymentWait();
+        return;
+      }
+      pollTimerRef.current = setTimeout(poll, ORDER_POLL_INTERVAL_MS);
+    };
+
+    poll();
+    return () => { cancelled = true; clearTimeout(pollTimerRef.current); };
+  }, [showPayment, pendingBookingId]);
+
+  // Fetch the customer display's tunnel URL, so the cashier can point that
+  // device's browser at it. This is a quick-tunnel URL, so it's a new random
+  // link every time the app restarts — the QR lets staff just re-scan it on
+  // the display device each morning instead of re-typing it.
+  useEffect(() => {
+    window.ipc?.invoke?.("get-display-url").then((url) => setDisplayUrl(url || "")).catch(() => {});
   }, []);
 
-  // Launch Cashfree modal when payment session is ready
   useEffect(() => {
-    if (!showPayment || !paymentSessionId || !pendingBookingId) return;
-
-    const launch = () => {
-      if (typeof window.Cashfree === "undefined") { setTimeout(launch, 150); return; }
-      const cfMode = process.env.NEXT_PUBLIC_CASHFREE_MODE || "production";
-      const cashfree = window.Cashfree({ mode: cfMode });
-      cashfree.checkout({ paymentSessionId, redirectTarget: "_modal" })
-        .then((result) => {
-          if (result?.error) {
-            setErrorMsg(result.error.message || "Payment failed or cancelled.");
-            setShowPayment(false);
-          } else if (result?.paymentDetails) {
-            const bookingPayload = pendingBookingPayloadRef.current || {};
-            localStorage.setItem("lastBooking", JSON.stringify({
-              ...bookingPayload,
-              bookingId: pendingBookingId,
-              bank: "UPI",
-            }));
-            localStorage.removeItem("bookingForm");
-            router.push(`/booking-success?id=${encodeURIComponent(pendingBookingId)}`);
-          }
-        })
-        .catch((err) => {
-          setErrorMsg(err.message || "Payment error");
-          setShowPayment(false);
-        });
-    };
-    launch();
-  }, [showPayment, paymentSessionId, pendingBookingId]);
+    if (!displayUrl) { setDisplayUrlQr(""); return; }
+    console.log("displayUrl",displayUrl)
+    QRCode.toDataURL(displayUrl, { width: 160, margin: 1 }).then(setDisplayUrlQr).catch(() => {});
+  }, [displayUrl]);
 
   const showErr = (msg) => { setErrorMsg(msg); };
 
@@ -129,10 +174,8 @@ export default function TaxReceipt() {
     // 4. Purpose / event
     if (!savedForm.purpose?.trim()) { showErr("Please select purpose / event"); return; }
 
-    // 5. Amount — only required when flexible
-    if (savedForm.amountType === "flexible") {
-      if (!Number(savedForm.amount) || Number(savedForm.amount) <= 0) { showErr("Please enter amount"); return; }
-    }
+    // 5. Amount — always required, must be greater than 0
+    if (!Number(savedForm.amount) || Number(savedForm.amount) <= 0) { showErr("Please enter amount"); return; }
 
     // 6. Date
     const noCalendarPurposes = [
@@ -146,7 +189,8 @@ export default function TaxReceipt() {
       if (!savedForm.pricePerDate || Number(savedForm.pricePerDate) <= 0) { showErr("Please enter price per date"); return; }
     } else if (!noCalendarPurposes.includes(savedForm.purpose)) {
       if (!savedForm.bookingDate) { showErr("Please select booking date"); return; }
-      const bd = new Date(savedForm.bookingDate);
+      const [by, bm, bdNum] = savedForm.bookingDate.split("-").map(Number);
+      const bd = new Date(by, bm - 1, bdNum);
       const today = new Date(); today.setHours(0, 0, 0, 0);
       if (bd < today) { showErr("Past dates are not allowed."); return; }
     }
@@ -171,6 +215,7 @@ export default function TaxReceipt() {
       customerId: savedForm.customerId || "",
       bookingGroupId: savedForm.bookingGroupId || "",
       parentBookingId: savedForm.parentBookingId || "",
+      smarnarth: savedForm.smarnarth?.trim() || "",
       name: savedForm.name?.trim() || "",
       phone: savedForm.phone?.trim() || "",
       email: savedForm.email?.trim() || "",
@@ -191,6 +236,7 @@ export default function TaxReceipt() {
       chequeDate:     isChequeSelected ? chequeDate : "",
       upiId:          savedForm.upiId || "",
       reason: savedForm.reason || "",
+      sendSms: !!savedForm.sendSms,
     };
 
     const isOnlineBank = selectedBank === "ICICI Bank" || selectedBank === "SBI Bank" || selectedBank === "BCCB Bank";
@@ -221,15 +267,20 @@ export default function TaxReceipt() {
           }),
         });
 
-        if (!orderRes?.payment_session_id) {
+        if (!orderRes?.link_url) {
           showErr("Could not initiate payment. Please try again.");
           return;
         }
 
-        // Step 3: Show Cashfree QR modal (triggered by useEffect)
+        // Step 3: Turn the Cashfree Payment Link into a QR code and push it
+        // to the customer-facing display device. Unlike the SDK checkout
+        // session, a Payment Link works from any device/browser — the
+        // customer scans it with their own phone and pays there.
+        const qrDataUrl = await QRCode.toDataURL(orderRes.link_url, { width: 400, margin: 1 });
+
         pendingBookingPayloadRef.current = bookingPayload;
         setPendingBookingId(orderId);
-        setPaymentSessionId(orderRes.payment_session_id);
+        window.ipc?.send?.("display-show-qr", { qrDataUrl, amount: advance, orderId });
         setShowPayment(true);
       } else {
         // Cash / Cheque — direct booking
@@ -238,7 +289,7 @@ export default function TaxReceipt() {
           body: JSON.stringify({ ...bookingPayload, status }),
         });
         const receiptId = response?.booking?.bookingId || response?.booking?.receiptId || response?.bookingId || "BOOKING";
-        localStorage.setItem("lastBooking", JSON.stringify({ ...(response?.booking || {}), bookingId: receiptId }));
+        localStorage.setItem("lastBooking", JSON.stringify({ ...(response?.booking || {}), bookingId: receiptId, sendSms: bookingPayload.sendSms }));
         localStorage.removeItem("bookingForm");
         router.push(`/booking-success?id=${encodeURIComponent(receiptId)}`);
       }
@@ -255,7 +306,7 @@ export default function TaxReceipt() {
       <Sidebar />
 
       <div className="db-main ir-internal-page">
-        <Header title="Income Tax Receipt / आयकर पावती" />
+        <Header title="आयकर पावती / Income Tax Receipt" />
 
         {/* STEP INDICATOR */}
         <div className="tr-step-bar">
@@ -273,10 +324,9 @@ export default function TaxReceipt() {
         {/* PAYMENT DETAILS CARD */}
         <div className="tr-card">
           <div className="tr-card-header">
-            <div className="tr-card-icon">💳</div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
               <div>
-                <p className="tr-card-title">Payment Details / पेमेंट तपशील</p>
+                <p className="tr-card-title">पेमेंट तपशील / Payment Details</p>
                 <p className="tr-card-subtitle">Select payment method and tax exemption</p>
               </div>
 
@@ -286,7 +336,7 @@ export default function TaxReceipt() {
                 disabled={loading || showPayment}
                 style={{ marginLeft: "auto" }}
               >
-                ← Back / मागे
+                ← मागे / Back
               </button>
             </div>
           </div>
@@ -313,9 +363,9 @@ export default function TaxReceipt() {
               </div>
             </label>
 
-            {/* PAYMENT METHOD PILLS — no Cash, Cheque added */}
+            {/* PAYMENT METHOD PILLS — Cash, Card, Cheque added */}
             <div className="tr-field">
-              <label className="tr-bank-label">Payment Method / पेमेंट पद्धत</label>
+              <label className="tr-bank-label">पेमेंट पद्धत / Payment Method</label>
               <div className="tr-bank-options">
                 {visibleBanks.map((bank) => (
                   <button
@@ -332,20 +382,35 @@ export default function TaxReceipt() {
                       }
                     }}
                   >
-                    <span className="tr-bank-icon">{bank.icon}</span>
                     {bank.label}
                   </button>
                 ))}
               </div>
+              {["ICICI Bank", "BCCB Bank", "SBI Bank"].includes(selectedBank) && displayUrl && (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "6px" }}>
+                  {displayUrlQr && (
+                    <img
+                      src={displayUrlQr}
+                      alt="Scan to open customer display"
+                      style={{ width: "72px", height: "72px", background: "#fff", padding: "4px", borderRadius: "4px" }}
+                    />
+                  )}
+                  <p style={{ fontSize: "11px", color: "#888" }}>
+                    Customer display device should be pointed at: <strong>{displayUrl}</strong>
+                    <br />
+                    Changes on every app restart — re-scan this each time it does.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* CHEQUE FIELDS — only when Cheque selected */}
             {isChequeSelected && (
               <div className="tr-cheque-box">
-                <p className="tr-cheque-title">📝 Cheque Details / चेक तपशील</p>
+                <p className="tr-cheque-title">चेक तपशील / Cheque Details</p>
 
                 <div className="tr-cheque-field">
-                  <label className="tr-bank-label">Paying Bank Name / बँकेचे नाव *</label>
+                  <label className="tr-bank-label">बँकेचे नाव / Paying Bank Name *</label>
                   <input
                     className="tr-cheque-input"
                     placeholder="e.g. State Bank of India"
@@ -355,7 +420,7 @@ export default function TaxReceipt() {
                 </div>
 
                 <div className="tr-cheque-field">
-                  <label className="tr-bank-label">Cheque Number / चेक नंबर *</label>
+                  <label className="tr-bank-label">चेक नंबर / Cheque Number *</label>
                   <input
                     className="tr-cheque-input"
                     placeholder="e.g. 123456"
@@ -368,7 +433,7 @@ export default function TaxReceipt() {
                 </div>
 
                 <div className="tr-cheque-field">
-                  <label className="tr-bank-label">Cheque Date / चेक तारीख *</label>
+                  <label className="tr-bank-label">चेक तारीख / Cheque Date *</label>
                   <input
                     type="date"
                     className="tr-cheque-input"
@@ -382,7 +447,7 @@ export default function TaxReceipt() {
             {/* PAN CARD — only when 80G enabled */}
             {is80G && (
               <div className="tr-pan-box">
-                <label className="tr-pan-label">🪪 PAN Card Number / पॅन कार्ड नंबर *</label>
+                <label className="tr-pan-label">🪪 पॅन कार्ड नंबर / PAN Card Number *</label>
                 <input
                   className="tr-pan-input"
                   placeholder="e.g. ABCDE1234F"
@@ -401,9 +466,8 @@ export default function TaxReceipt() {
         {/* DEVOTEE DETAILS CARD */}
         <div className="tr-card">
           <div className="tr-card-header">
-            <div className="tr-card-icon">👤</div>
             <div>
-              <p className="tr-card-title">Devotee Details / भक्त तपशील</p>
+              <p className="tr-card-title">भक्त तपशील / Devotee Details</p>
               <p className="tr-card-subtitle">Enter the devotee's personal information</p>
             </div>
           </div>
@@ -415,9 +479,8 @@ export default function TaxReceipt() {
         {/* PURPOSE CARD */}
         <div className="tr-card">
           <div className="tr-card-header">
-            <div className="tr-card-icon">📋</div>
             <div>
-              <p className="tr-card-title">Purpose & Date / उद्देश आणि तारीख</p>
+              <p className="tr-card-title">उद्देश आणि तारीख / Purpose & Date</p>
               <p className="tr-card-subtitle">Select purpose, payment type and booking date</p>
             </div>
           </div>
@@ -432,20 +495,19 @@ export default function TaxReceipt() {
             color: "#dc2626", padding: "6px 10px", marginBottom: "8px",
             fontSize: "13px", display: "flex", alignItems: "center", gap: "6px",
           }}>
-            <span>⚠️</span>
             <span style={{ flex: 1 }}>{errorMsg}</span>
-            <button onClick={() => setErrorMsg("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", fontSize: "14px", lineHeight: 1 }}>✕</button>
+            <button onClick={() => setErrorMsg("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", fontSize: "14px", lineHeight: 1 }}>x</button>
           </div>
         )}
 
-        {/* PAYMENT IN PROGRESS — shown while Cashfree QR modal is open */}
+        {/* PAYMENT IN PROGRESS — QR is shown on the customer-facing display device */}
         {showPayment && (
           <div style={{
             background: "#f0f9ff", border: "1px solid #0ea5e9", borderRadius: "8px",
             padding: "14px 16px", marginBottom: "10px", textAlign: "center",
           }}>
             <p style={{ fontWeight: 600, color: "#0369a1", marginBottom: "4px", fontSize: "14px" }}>
-              💳 Payment window is open — complete the UPI payment in the popup.
+              Waiting for the customer to scan &amp; pay on the display screen...
             </p>
             <p style={{ fontSize: "12px", color: "#666", marginBottom: "10px" }}>
               Booking ID: <strong>{pendingBookingId}</strong>
@@ -455,7 +517,7 @@ export default function TaxReceipt() {
                 fontSize: "12px", padding: "4px 14px", cursor: "pointer",
                 border: "1px solid #94a3b8", borderRadius: "4px", background: "#fff",
               }}
-              onClick={() => { setShowPayment(false); setPaymentSessionId(""); }}
+              onClick={stopPaymentWait}
             >
               Cancel Payment
             </button>
@@ -465,10 +527,10 @@ export default function TaxReceipt() {
         {/* ACTION BUTTONS */}
         <div className="tr-actions">
           <button className="secondary-btn" onClick={() => router.push("/new-booking")} disabled={loading || showPayment}>
-            ← Back / मागे
+            ← मागे / Back
           </button>
           <button type="button" className="primary-btn" onClick={handleCreateBooking} disabled={loading || showPayment}>
-            {loading ? "Processing..." : "Create Booking / बुकिंग करा ✓"}
+            {loading ? "Processing..." : "बुकिंग करा / Create Booking"}
           </button>
 
 

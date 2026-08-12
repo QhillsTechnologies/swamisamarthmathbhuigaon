@@ -12,11 +12,10 @@ import Pagination from "../components/Pagination";
    CONSTANTS
 ============================================================ */
 const DATE_RULES = [
-  { key: "any",      label: "Any Future Date",       mr: "कोणतीही भविष्यातील तारीख", icon: "📅" },
-  { key: "thursday", label: "Thursday Only",          mr: "फक्त गुरुवार",              icon: "🗓" },
-  { key: "sun_thu",  label: "Sunday & Thursday Only", mr: "रविवार आणि गुरुवार",        icon: "🗓" },
-  { key: "specific", label: "Specific Dates Only",    mr: "विशिष्ट तारखा",             icon: "📌" },
-  // "No Date Required" removed as requested
+  { key: "any",      label: "Any Future Date",       mr: "कोणतीही भविष्यातील तारीख" },
+  { key: "thursday", label: "Thursday Only",          mr: "फक्त गुरुवार" },
+  { key: "sun_thu",  label: "Sunday & Thursday Only", mr: "रविवार आणि गुरुवार" },
+  { key: "specific", label: "Specific Dates Only",    mr: "विशिष्ट तारखा" },
 ];
 
 function AddSeva() {
@@ -115,6 +114,14 @@ function AddSeva() {
     return `${y}-${m}-${d}`;
   };
 
+  const toDisplayDate = (date) => {
+    if (!date) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${d}-${m}-${y}`;
+  };
+
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
@@ -162,7 +169,7 @@ function AddSeva() {
 
     // Scroll to form
     window.scrollTo({ top: 0, behavior: "smooth" });
-    showToast("✏️ Editing: " + seva.displayName);
+    showToast("Editing: " + seva.displayName);
   };
 
   /* ============================================================
@@ -234,7 +241,7 @@ function AddSeva() {
           method: "POST",
           body: JSON.stringify({ id: editingId, ...payload }),
         });
-        showToast("✅ Seva updated successfully!");
+        showToast("Seva updated successfully!");
       } else {
         // ── CREATE new seva ──
         payload.createdAt = new Date();
@@ -242,7 +249,7 @@ function AddSeva() {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        showToast("✅ Seva saved successfully!");
+        showToast("Seva saved successfully!");
       }
 
       saveLocalSevaFlag(eventType, displayName, { allowMultiDate, hasGotra, blockOnSpecialDates });
@@ -268,7 +275,7 @@ function AddSeva() {
       setSevaList(sevaList.map((s) =>
         (s._id || s.id) === id ? { ...s, isActive: newActive } : s
       ));
-      showToast(newActive ? " Seva activated" : " Seva deactivated");
+      showToast(newActive ? "Seva activated" : "Seva deactivated");
     } catch (err) {
       setSevaError(err.message || "Failed to update seva");
     }
@@ -286,7 +293,7 @@ function AddSeva() {
       });
       setSevaList(sevaList.filter((s) => (s._id || s.id) !== id));
       if (editingId === id) resetForm();
-      showToast("🗑 Seva deleted");
+      showToast("Seva deleted");
     } catch (err) {
       setSevaError(err.message || "Failed to delete");
     }
@@ -316,7 +323,7 @@ function AddSeva() {
       <Sidebar />
 
       <div className="db-main">
-        <Header title="Add Seva / सेवा जोडा" />
+        <Header title="सेवा जोडा / Add Seva" />
 
         {/* ── EDIT MODE BANNER ── */}
         {editingId && (
@@ -332,7 +339,6 @@ function AddSeva() {
             gap: "12px",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "18px" }}>✏️</span>
               <div>
                 <p style={{ fontWeight: 700, color: "#c2410c", margin: 0 }}>Edit Mode</p>
                 <p style={{ fontSize: "12px", color: "#9a3412", margin: 0 }}>
@@ -354,7 +360,7 @@ function AddSeva() {
                 whiteSpace: "nowrap",
               }}
             >
-              ✕ Cancel Edit
+              Cancel Edit
             </button>
           </div>
         )}
@@ -375,17 +381,15 @@ function AddSeva() {
           {/* ══ STEP 1: EVENT TYPE ══ */}
           {step === 1 && (
             <div className="as-step-body">
-              <h3 className="as-step-title">Step 1 — Event Type / कार्यक्रम प्रकार</h3>
+              <h3 className="as-step-title">Step 1 — कार्यक्रम प्रकार / Event Type</h3>
               <p className="as-step-desc">Is this a special festival event or a regular daily seva?</p>
               <div className="as-type-grid">
                 <button type="button" className={`as-type-btn ${eventType === "special" ? "as-type-btn--active" : ""}`} onClick={() => setEventType("special")}>
-                  <span className="as-type-icon"></span>
                   <span className="as-type-title">Special Events</span>
                   <span className="as-type-sub">विशेष कार्यक्रम</span>
                   <span className="as-type-hint">Festival-based, specific dates (e.g. Ram Navami Bhandara)</span>
                 </button>
                 <button type="button" className={`as-type-btn ${eventType === "regular" ? "as-type-btn--active" : ""}`} onClick={() => setEventType("regular")}>
-                  <span className="as-type-icon"></span>
                   <span className="as-type-title">Regular Events</span>
                   <span className="as-type-sub">नियमित कार्यक्रम</span>
                   <span className="as-type-hint">Daily/weekly sevas (e.g. Abhishek, Donation, Vidaprasad)</span>
@@ -397,13 +401,13 @@ function AddSeva() {
           {/* ══ STEP 2: NAME ══ */}
           {step === 2 && (
             <div className="as-step-body">
-              <h3 className="as-step-title">Step 2 — Seva Name / सेवेचे नाव</h3>
+              <h3 className="as-step-title">Step 2 — सेवेचे नाव / Seva Name</h3>
               <p className="as-step-desc">
                 {eventType === "special" ? "Enter the name of this special event / festival" : "Enter the name of this regular seva purpose"}
               </p>
               <div className="as-field">
                 <label className="as-label">
-                  {eventType === "special" ? "Event Name / उत्सव नाव" : "Purpose Name / उद्देश नाव"} *
+                  {eventType === "special" ? "उत्सव नाव / Event Name" : "उद्देश नाव / Purpose Name"} *
                 </label>
                 <input
                   className="input"
@@ -427,17 +431,15 @@ function AddSeva() {
           {/* ══ STEP 3: AMOUNT ══ */}
           {step === 3 && (
             <div className="as-step-body">
-              <h3 className="as-step-title">Step 3 — Amount / रक्कम</h3>
+              <h3 className="as-step-title">Step 3 — रक्कम / Amount</h3>
               <p className="as-step-desc">Is the amount fixed by admin or entered by the user at booking time?</p>
               <div className="as-type-grid">
                 <button type="button" className={`as-type-btn ${amountType === "fixed" ? "as-type-btn--active" : ""}`} onClick={() => setAmountType("fixed")}>
-                  <span className="as-type-icon">🔒</span>
                   <span className="as-type-title">Fixed Amount</span>
                   <span className="as-type-sub">निश्चित रक्कम</span>
                   <span className="as-type-hint">e.g. Vidaprasad ₹251, Full Bhandara ₹1,00,000</span>
                 </button>
                 <button type="button" className={`as-type-btn ${amountType === "flexible" ? "as-type-btn--active" : ""}`} onClick={() => { setAmountType("flexible"); setFixedAmount(""); }}>
-                  <span className="as-type-icon">✏️</span>
                   <span className="as-type-title">Flexible Amount</span>
                   <span className="as-type-sub">लवचिक रक्कम</span>
                   <span className="as-type-hint">User enters amount at booking (e.g. Donation)</span>
@@ -445,8 +447,8 @@ function AddSeva() {
               </div>
               {amountType === "fixed" && (
                 <div className="as-field" style={{ marginTop: "16px" }}>
-                  <label className="as-label">Fixed Amount / निश्चित रक्कम (₹) *</label>
-                  <input type="number" className="input" placeholder="Enter amount e.g. 251" min="1" value={fixedAmount} onChange={(e) => setFixedAmount(e.target.value)} />
+                  <label className="as-label">निश्चित रक्कम (₹) / Fixed Amount *</label>
+                  <input type="number" className="input" placeholder="Enter amount e.g. 251" min="1" value={fixedAmount} onChange={(e) => setFixedAmount(e.target.value)} onWheel={(e) => e.target.blur()} />
                 </div>
               )}
             </div>
@@ -455,23 +457,21 @@ function AddSeva() {
           {/* ══ STEP 4: PAYMENT OPTIONS ══ */}
           {step === 4 && (
             <div className="as-step-body">
-              <h3 className="as-step-title">Step 4 — Payment Options / पेमेंट पर्याय</h3>
+              <h3 className="as-step-title">Step 4 — पेमेंट पर्याय / Payment Options</h3>
               {amountType === "flexible" ? (
                 <div className="as-info-box">
-                  ℹ️ Since this seva has a flexible amount, only Full Payment applies — users pay the full amount they enter.
+                  Since this seva has a flexible amount, only Full Payment applies — users pay the full amount they enter.
                 </div>
               ) : (
                 <>
                   <p className="as-step-desc">Can users pay in advance (partial) or must they pay the full amount?</p>
                   <div className="as-type-grid">
                     <button type="button" className={`as-type-btn ${paymentOptions === "full" ? "as-type-btn--active" : ""}`} onClick={() => setPaymentOptions("full")}>
-                      <span className="as-type-icon"></span>
                       <span className="as-type-title">Full Payment Only</span>
                       <span className="as-type-sub">फक्त पूर्ण पेमेंट</span>
                       <span className="as-type-hint">e.g. Shiraprasad, Vidaprasad — must pay full at booking</span>
                     </button>
                     <button type="button" className={`as-type-btn ${paymentOptions === "full_advance" ? "as-type-btn--active" : ""}`} onClick={() => setPaymentOptions("full_advance")}>
-                      <span className="as-type-icon"></span>
                       <span className="as-type-title">Full + Advance</span>
                       <span className="as-type-sub">पूर्ण + आगाऊ</span>
                       <span className="as-type-hint">e.g. Full/Half Bhandara — users can pay partial advance now</span>
@@ -485,12 +485,11 @@ function AddSeva() {
           {/* ══ STEP 5: DATE RULES ══ */}
           {step === 5 && (
             <div className="as-step-body">
-              <h3 className="as-step-title">Step 5 — Date Rules / तारीख नियम</h3>
+              <h3 className="as-step-title">Step 5 — तारीख नियम / Date Rules</h3>
               <p className="as-step-desc">Which dates can users select for this seva?</p>
               <div className="as-date-rule-list">
                 {(eventType === "special" ? DATE_RULES.filter((r) => r.key === "specific") : DATE_RULES).map((rule) => (
                   <button key={rule.key} type="button" className={`as-date-rule-btn ${dateRule === rule.key ? "as-date-rule-btn--active" : ""}`} onClick={() => { setDateRule(rule.key); setSpecificDates([]); }}>
-                    <span className="as-date-rule-icon">{rule.icon}</span>
                     <div>
                       <p className="as-date-rule-title">{rule.label}</p>
                       <p className="as-date-rule-mr">{rule.mr}</p>
@@ -507,7 +506,7 @@ function AddSeva() {
                     <div className="as-date-tags">
                       {specificDates.slice().sort((a, b) => a - b).map((date, i) => (
                         <span key={i} className="as-date-tag">
-                          {toDBDate(date)}
+                          {toDisplayDate(date)}
                           <button onClick={() => handleSpecificDateToggle(date)}>×</button>
                         </span>
                       ))}
@@ -532,7 +531,7 @@ function AddSeva() {
               {/* ── Allow Multiple Date Selection ── */}
               <div className="as-toggle-row" style={{ marginTop: "16px" }}>
                 <div>
-                  <p className="as-toggle-title">📅 Allow Multiple Date Selection / अनेक तारखा निवड</p>
+                  <p className="as-toggle-title">अनेक तारखा निवड / Allow Multiple Date Selection</p>
                   <p className="as-toggle-desc">If ON, users can select multiple dates when booking this seva</p>
                 </div>
                 <label className="as-switch">
@@ -544,7 +543,7 @@ function AddSeva() {
               {/* ── Require Gotra ── */}
               <div className="as-toggle-row" style={{ marginTop: "12px" }}>
                 <div>
-                  <p className="as-toggle-title"> Require Gotra / गोत्र आवश्यक</p>
+                  <p className="as-toggle-title"> गोत्र आवश्यक / Require Gotra</p>
                   <p className="as-toggle-desc">If ON, users must select their Gotra when booking this seva</p>
                 </div>
                 <label className="as-switch">
@@ -556,10 +555,10 @@ function AddSeva() {
               {dateRule && (
                 <div className="as-field" style={{ marginTop: "16px" }}>
                   <label className="as-label">
-                    Max Bookings per Date / प्रति तारीख कमाल बुकिंग
+                    प्रति तारीख कमाल बुकिंग / Max Bookings per Date
                     <span className="as-label-hint"> (0 = unlimited)</span>
                   </label>
-                  <input type="number" className="input" placeholder="e.g. 1 for Full Bhandara, 0 for unlimited" min="0" value={maxPerDate} onChange={(e) => setMaxPerDate(e.target.value)} />
+                  <input type="number" className="input" placeholder="e.g. 1 for Full Bhandara, 0 for unlimited" min="0" value={maxPerDate} onChange={(e) => setMaxPerDate(e.target.value)} onWheel={(e) => e.target.blur()} />
                 </div>
               )}
             </div>
@@ -580,7 +579,7 @@ function AddSeva() {
               <button type="button" className="primary-btn" disabled={!canProceed() || saving} onClick={handleSave}>
                 {saving
                   ? (editingId ? "Updating..." : "Saving...")
-                  : editingId ? "💾 Update Seva" : "💾 Save Seva"
+                  : editingId ? "Update Seva" : "Save Seva"
                 }
               </button>
             )}
@@ -589,7 +588,7 @@ function AddSeva() {
 
         {/* ── EXISTING SEVA LIST ── */}
         <div className="as-card" style={{ marginTop: "20px" }}>
-          <h3 className="as-list-title">Existing Sevas / विद्यमान सेवा</h3>
+          <h3 className="as-list-title">विद्यमान सेवा / Existing Sevas</h3>
 
           {sevaLoading ? (
             <p style={{ color: "#999", padding: "12px 0" }}>Loading...</p>
@@ -613,10 +612,10 @@ function AddSeva() {
                     >
                       <div className="as-seva-info">
                         <div className="as-seva-badge">
-                          {seva.eventType === "special" ? " Special" : " Regular"}
+                          {seva.eventType === "special" ? "Special" : "Regular"}
                           {isBeingEdited && (
                             <span style={{ marginLeft: "6px", color: "#c2410c", fontSize: "11px", fontWeight: 700 }}>
-                               Editing
+                              Editing
                             </span>
                           )}
                         </div>
@@ -628,9 +627,9 @@ function AddSeva() {
                           {seva.maxPerDate > 0 && <><span>·</span><span>Max {seva.maxPerDate}/date</span></>}
                           <span>·</span>
                           <span style={{ color: seva.isActive === false ? "#dc2626" : "#16a34a", fontWeight: 700 }}>
-                            {seva.isActive === false ? " Inactive" : " Active"}
+                            {seva.isActive === false ? "Inactive" : "Active"}
                           </span>
-                          {seva.blockOnSpecialDates && <><span>·</span><span style={{ color: "#f97316", fontWeight: 600 }}> Blocked on special dates</span></>}
+                          {seva.blockOnSpecialDates && <><span>·</span><span style={{ color: "#f97316", fontWeight: 600 }}>Blocked on special dates</span></>}
                         </div>
                       </div>
 
@@ -652,7 +651,7 @@ function AddSeva() {
                           }}
                           onClick={() => isBeingEdited ? resetForm() : handleEdit(seva)}
                         >
-                          {isBeingEdited ? "✕ Cancel" : " Edit"}
+                          {isBeingEdited ? "Cancel" : "Edit"}
                         </button>
 
                         {/* Activate / Deactivate */}
@@ -696,8 +695,8 @@ function AddSeva() {
         {toast && <div className="toast">{toast}</div>}
         {sevaError && (
           <div style={{ position: "fixed", bottom: "80px", left: "50%", transform: "translateX(-50%)", background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "8px", color: "#dc2626", padding: "10px 18px", fontSize: "13px", zIndex: 1000, display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-            ⚠️ {sevaError}
-            <button onClick={() => setSevaError("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", fontSize: "16px", lineHeight: 1 }}>✕</button>
+            {sevaError}
+            <button onClick={() => setSevaError("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", fontSize: "16px", lineHeight: 1 }}>x</button>
           </div>
         )}
       </div>

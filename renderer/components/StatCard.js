@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 export default function StatCard({
   title,
   value,
-  icon,
   color,
   link,
 }) {
@@ -28,9 +27,7 @@ export default function StatCard({
         <h2 className={`db-${color}`}>{value}</h2>
       </div>
 
-      <div className="db-card-icon">
-        {icon}
-      </div>
+
     </div>
   );
 }

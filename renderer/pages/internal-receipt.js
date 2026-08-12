@@ -36,8 +36,9 @@ export default function InternalReceipt() {
     // 1. Name & phone
     if (!savedForm.name?.trim())         { showErr("Please enter devotee name"); return; }
     if (!validateName(savedForm.name))   { showErr("Name should contain only letters and spaces."); return; }
-    if (!savedForm.phone?.trim())        { showErr("Please enter phone number"); return; }
-    if (!validatePhone(savedForm.phone)) { showErr("Enter a valid 10-digit mobile number."); return; }
+    const phoneStr = String(savedForm.phone ?? "");
+    if (!phoneStr.trim())                { showErr("Please enter phone number"); return; }
+    if (!validatePhone(phoneStr))        { showErr("Enter a valid 10-digit mobile number."); return; }
     if (savedForm.email?.trim() && !validateEmail(savedForm.email)) { showErr("Please enter a valid email address."); return; }
 
     // 2. Event type
@@ -46,10 +47,8 @@ export default function InternalReceipt() {
     // 3. Purpose / event
     if (!savedForm.purpose?.trim()) { showErr("Please select purpose / event"); return; }
 
-    // 4. Amount — only required when flexible
-    if (savedForm.amountType === "flexible") {
-      if (!Number(savedForm.amount) || Number(savedForm.amount) <= 0) { showErr("Please enter amount"); return; }
-    }
+    // 4. Amount — always required, must be greater than 0
+    if (!Number(savedForm.amount) || Number(savedForm.amount) <= 0) { showErr("Please enter amount"); return; }
 
     // 5. Date
     const noCalendarPurposes = [
@@ -63,7 +62,8 @@ export default function InternalReceipt() {
       if (!savedForm.pricePerDate || Number(savedForm.pricePerDate) <= 0) { showErr("Please enter price per date"); return; }
     } else if (!noCalendarPurposes.includes(savedForm.purpose)) {
       if (!savedForm.bookingDate) { showErr("Please select booking date"); return; }
-      const bd = new Date(savedForm.bookingDate);
+      const [by, bm, bdNum] = savedForm.bookingDate.split("-").map(Number);
+      const bd = new Date(by, bm - 1, bdNum);
       const today = new Date(); today.setHours(0, 0, 0, 0);
       if (bd < today) { showErr("Past dates are not allowed."); return; }
     }
@@ -92,8 +92,9 @@ export default function InternalReceipt() {
           customerId: savedForm.customerId || "",
           bookingGroupId: savedForm.bookingGroupId || "",
           parentBookingId: savedForm.parentBookingId || "",
+          smarnarth: savedForm.smarnarth?.trim() || "",
           name: savedForm.name?.trim() || "",
-          phone: savedForm.phone?.trim() || "",
+          phone: phoneStr.trim(),
           email: savedForm.email?.trim() || "",
           address: savedForm.address?.trim() || "",
           purpose: savedForm.purpose || "",
@@ -106,11 +107,12 @@ export default function InternalReceipt() {
           receiptType: "Internal",
           bank: "Cash",
           reason: savedForm.reason || "",
+          sendSms: !!savedForm.sendSms,
         }),
       });
 
       const receiptId = response?.booking?.bookingId || response?.booking?.receiptId || response?.bookingId || "BOOKING";
-      localStorage.setItem("lastBooking", JSON.stringify({ ...(response?.booking || {}), bookingId: receiptId }));
+      localStorage.setItem("lastBooking", JSON.stringify({ ...(response?.booking || {}), bookingId: receiptId, sendSms: !!savedForm.sendSms }));
       localStorage.removeItem("bookingForm");
       router.push(`/booking-success?id=${encodeURIComponent(receiptId)}`);
     } catch (err) {
@@ -126,7 +128,7 @@ export default function InternalReceipt() {
       <Sidebar />
 
       <div className="db-main ir-internal-page">
-        <Header title="Internal Receipt / अंतर्गत पावती" />
+        <Header title="अंतर्गत पावती / Internal Receipt" />
 
         {/* STEP INDICATOR */}
         <div className="ir-step-bar">
@@ -144,10 +146,9 @@ export default function InternalReceipt() {
         {/* CASH PAYMENT INDICATOR */}
         <div className="tr-card">
           <div className="tr-card-header">
-            <div className="tr-card-icon"></div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
               <div>
-                <p className="tr-card-title">Payment Method / पेमेंट पद्धत</p>
+                <p className="tr-card-title">पेमेंट पद्धत / Payment Method</p>
                 <p className="tr-card-subtitle">Internal receipts accept cash only</p>
               </div>
 
@@ -157,7 +158,7 @@ export default function InternalReceipt() {
                 disabled={loading}
                 style={{ marginLeft: "auto" }}
               >
-                ← Back / मागे
+                ← मागे / Back
               </button>
             </div>
           </div>
@@ -169,7 +170,7 @@ export default function InternalReceipt() {
               fontSize: "14px", fontWeight: 700, color: "#15803d",
             }}>
               <span style={{ fontSize: "20px" }}></span>
-              Cash / रोख
+              रोख / Cash
             </div>
           </div>
         </div>
@@ -177,9 +178,8 @@ export default function InternalReceipt() {
         {/* DEVOTEE DETAILS CARD */}
         <div className="ir-card">
           <div className="ir-card-header">
-            <div className="ir-card-icon">👤</div>
             <div>
-              <p className="ir-card-title">Devotee Details / भक्त तपशील</p>
+              <p className="ir-card-title">भक्त तपशील / Devotee Details</p>
               <p className="ir-card-subtitle">Enter the devotee's personal information</p>
             </div>
           </div>
@@ -191,9 +191,8 @@ export default function InternalReceipt() {
         {/* PURPOSE & BOOKING DETAILS CARD */}
         <div className="ir-card">
           <div className="ir-card-header">
-            <div className="ir-card-icon">📋</div>
             <div>
-              <p className="ir-card-title">Purpose & Date / उद्देश आणि तारीख</p>
+              <p className="ir-card-title">उद्देश आणि तारीख / Purpose & Date</p>
               <p className="ir-card-subtitle">Select purpose, payment type and booking date</p>
             </div>
           </div>
@@ -208,9 +207,8 @@ export default function InternalReceipt() {
             color: "#dc2626", padding: "6px 10px", marginBottom: "8px",
             fontSize: "13px", display: "flex", alignItems: "center", gap: "6px",
           }}>
-            <span>⚠️</span>
             <span style={{ flex: 1 }}>{errorMsg}</span>
-            <button onClick={() => setErrorMsg("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", fontSize: "14px", lineHeight: 1 }}>✕</button>
+            <button onClick={() => setErrorMsg("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", fontSize: "14px", lineHeight: 1 }}>x</button>
           </div>
         )}
 
@@ -221,14 +219,14 @@ export default function InternalReceipt() {
             onClick={() => router.push("/new-booking")}
             disabled={loading}
           >
-            ← Back / मागे
+            ← मागे / Back
           </button>
           <button
             className="primary-btn"
             onClick={handleCreateBooking}
             disabled={loading}
           >
-            {loading ? "Creating..." : "Create Booking / बुकिंग करा ✓"}
+            {loading ? "Creating..." : "बुकिंग करा / Create Booking"}
           </button>
         </div>
       </div>

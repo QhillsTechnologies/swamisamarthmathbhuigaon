@@ -22,23 +22,13 @@ function AllBookings() {
 
   const tableRef = useRef(null);
   const headerRef = useRef(null);
-  const scrollbarRef = useRef(null);
 
   /* ======================================================
-     SYNC HORIZONTAL SCROLL
+     SYNC HORIZONTAL SCROLL — keeps header aligned with rows
   ====================================================== */
   const handleTableScroll = () => {
     if (headerRef.current)
       headerRef.current.scrollLeft = tableRef.current.scrollLeft;
-    if (scrollbarRef.current)
-      scrollbarRef.current.scrollLeft = tableRef.current.scrollLeft;
-  };
-
-  const handleScrollbarScroll = () => {
-    if (tableRef.current)
-      tableRef.current.scrollLeft = scrollbarRef.current.scrollLeft;
-    if (headerRef.current)
-      headerRef.current.scrollLeft = scrollbarRef.current.scrollLeft;
   };
 
   /* ======================================================
@@ -146,6 +136,21 @@ function AllBookings() {
     return date.toLocaleDateString("en-GB");
   };
 
+  // Multi-date bookings (e.g. Abhishek/seva booked across several dates)
+  // store all of them in booking.multiDates — show every one of them here
+  // instead of just the single bookingDate (which the backend only fills
+  // with the earliest date, for records/sorting).
+  const formatBookingDate = (booking) => {
+    if (Array.isArray(booking.multiDates) && booking.multiDates.length > 1) {
+      return booking.multiDates
+        .slice()
+        .sort()
+        .map(formatDate)
+        .join(", ");
+    }
+    return formatDate(booking.bookingDate || booking.date);
+  };
+
   /* ======================================================
      LOADING
   ====================================================== */
@@ -154,7 +159,7 @@ function AllBookings() {
       <div className="db-dashboard">
         <Sidebar />
         <div className="db-main">
-          <Header title="All Bookings / सर्व बुकिंग" />
+          <Header title="सर्व बुकिंग / All Bookings" />
           <p style={{ padding: "20px" }}>Loading bookings...</p>
         </div>
       </div>
@@ -168,9 +173,9 @@ function AllBookings() {
     <div className="db-dashboard">
       <Sidebar />
 
-      <div className="db-main">
+      <div className="db-main ab-page">
         <div className="ab-sticky-top">
-          <Header title="All Bookings / सर्व बुकिंग" />
+          <Header title="सर्व बुकिंग / All Bookings" />
 
           {/* SEARCH BOX */}
           <div className="ab-search-box">
@@ -186,7 +191,7 @@ function AllBookings() {
         {/* PAGE ERROR */}
         {pageError && (
           <div style={{ background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "6px", color: "#dc2626", padding: "8px 12px", margin: "10px 0", fontSize: "13px" }}>
-            ⚠️ {pageError}
+            {pageError}
           </div>
         )}
 
@@ -198,8 +203,8 @@ function AllBookings() {
             color: cancelMsg.type === "success" ? "#15803d" : "#dc2626",
             borderRadius: "6px", padding: "8px 12px", margin: "10px 0", fontSize: "13px", display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
-            <span>{cancelMsg.type === "success" ? "✓" : "⚠️"} {cancelMsg.text}</span>
-            <button onClick={() => setCancelMsg({ text: "", type: "" })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "14px" }}>✕</button>
+            <span>{cancelMsg.text}</span>
+            <button onClick={() => setCancelMsg({ text: "", type: "" })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "14px" }}>x</button>
           </div>
         )}
 
@@ -288,10 +293,10 @@ function AllBookings() {
                         </div>
                         <div className={`ab-status ${statusClass}`}>{status}</div>
                         <div className="ab-date">
-                          {formatDate(booking.bookingDate || booking.date)}
+                          {formatBookingDate(booking)}
                         </div>
                         <div>
-                          {showCancelBtn && (
+                          {showCancelBtn ? (
                             <button
                               className="ab-cancel-btn"
                               onClick={() =>
@@ -300,21 +305,19 @@ function AllBookings() {
                             >
                               Cancel
                             </button>
-                          )}
+                          ) : statusLower === "cancelled" ? (
+                            <span
+                              className="ab-cancel-reason"
+                              title={booking.reason || ""}
+                            >
+                              {booking.reason || "-"}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-
-              {/* STICKY BOTTOM SCROLLBAR */}
-              <div
-                className="ab-sticky-scrollbar"
-                ref={scrollbarRef}
-                onScroll={handleScrollbarScroll}
-              >
-                <div className="ab-scrollbar-inner" />
               </div>
 
               <Pagination
@@ -336,7 +339,7 @@ function AllBookings() {
             <p>Enter cancellation reason</p>
             {cancelMsg.type === "error" && cancelMsg.text && (
               <div style={{ background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "6px", color: "#dc2626", padding: "6px 10px", fontSize: "12px", margin: "6px 0" }}>
-                ⚠️ {cancelMsg.text}
+                {cancelMsg.text}
               </div>
             )}
             <textarea

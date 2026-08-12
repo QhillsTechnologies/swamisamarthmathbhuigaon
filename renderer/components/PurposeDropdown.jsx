@@ -7,8 +7,8 @@ import apiRequest from "../services/api";
    CONSTANTS
 ========================================== */
 const ABHISHEK_GOTRAS = [
-  "विश्वामित्र", "जमदग्री", "भारद्वाज", "गोतम",
-  "अत्रि", "विशिष्ट", "कश्यप", "अगस्ती", "Other",
+  "विश्र्वमित्र", "जमदग्नी", "भारद्वाज", "गौतम",
+  "अत्रि", "वसिष्ठ", "कश्यप", "अगस्ती", "Other",
 ];
 
 /* ==========================================
@@ -925,21 +925,20 @@ export default function PurposeDropdown() {
 
       {/* SECTION HEADER */}
       <div className="pd-header">
-        <div className="pd-header-icon">🪔</div>
         <div>
-          <h3 className="pd-header-title">Purpose / उद्देश</h3>
+          <h3 className="pd-header-title">उद्देश / Purpose</h3>
           <p className="pd-header-sub">Select event type and booking purpose</p>
         </div>
       </div>
 
       {/* EVENT TYPE BUTTONS */}
       <div className="pd-field">
-        <label className="pd-label">Event Type / कार्यक्रम प्रकार</label>
+        <label className="pd-label">कार्यक्रम प्रकार / Event Type</label>
         <div className="pd-event-grid">
           {[
-            { key: "special", icon: "✨", en: "Special Events", mr: "विशेष कार्यक्रम" },
-            { key: "regular", icon: "📋", en: "Regular Events", mr: "नियमित कार्यक्रम" },
-          ].map(({ key, icon, en, mr }) => (
+            { key: "special", en: "Special Events", mr: "विशेष कार्यक्रम" },
+            { key: "regular", en: "Regular Events", mr: "नियमित कार्यक्रम" },
+          ].map(({ key, en, mr }) => (
             <button
               key={key}
               type="button"
@@ -947,7 +946,6 @@ export default function PurposeDropdown() {
               onClick={() => handleEventTypeChange(key)}
               className={`pd-event-btn ${eventType === key ? "pd-event-btn--active" : ""}`}
             >
-              <span className="pd-event-icon">{icon}</span>
               <span className="pd-event-en">{en}</span>
               <span className="pd-event-mr">{mr}</span>
             </button>
@@ -963,14 +961,14 @@ export default function PurposeDropdown() {
 
           {/* Step 1: Select special seva */}
           <div className="pd-field">
-            <label className="pd-label">Event / उत्सव *</label>
+            <label className="pd-label">उत्सव / Event *</label>
             <select
               className="pd-select"
               value={selectedSpecialSeva ? (selectedSpecialSeva._id || selectedSpecialSeva.id) : ""}
               onChange={handleSpecialSevaChange}
               disabled={isEditMode}
             >
-              <option value="">— Select Event / उत्सव निवडा —</option>
+              <option value="">— उत्सव निवडा / Select Event —</option>
               {specialSevas.map((seva, i) => {
                 const dates = seva.specificDates || seva.dates || [];
                 const dateRange = dates.length > 0 ? ` (${dates[0]} to ${dates[dates.length - 1]})` : "";
@@ -989,7 +987,7 @@ export default function PurposeDropdown() {
               {selectedSpecialSeva.hasSubPurposes && selectedSpecialSeva.subPurposes?.length > 0 && (
                 <div className="pd-field">
                   <label className="pd-label">
-                    {selectedSpecialSeva.displayName} Type / सेवा प्रकार *
+                    सेवा प्रकार / {selectedSpecialSeva.displayName} Type *
                   </label>
                   <select
                     className="pd-select"
@@ -1013,7 +1011,7 @@ export default function PurposeDropdown() {
               {selectedSpecialSeva.hasGotra &&
                 (!selectedSpecialSeva.hasSubPurposes || selectedSpecialSubPurpose) && (
                 <div className="pd-field">
-                  <label className="pd-label">Gotra / गोत्र</label>
+                  <label className="pd-label">गोत्र / Gotra</label>
                   <select
                     className="pd-select"
                     value={ABHISHEK_GOTRAS.includes(gotra) ? gotra : gotra ? "Other" : ""}
@@ -1023,14 +1021,14 @@ export default function PurposeDropdown() {
                     }}
                     disabled={isEditMode}
                   >
-                    <option value="">— Select Gotra / गोत्र निवडा —</option>
+                    <option value="">— गोत्र निवडा / Select Gotra —</option>
                     {ABHISHEK_GOTRAS.map((g, i) => <option key={i} value={g}>{g}</option>)}
                   </select>
                   {(gotra === "Other" || (gotra && !ABHISHEK_GOTRAS.slice(0, -1).includes(gotra))) && (
                     <input
                       className="pd-input"
                       style={{ marginTop: "8px" }}
-                      placeholder="Enter Gotra / गोत्र प्रविष्ट करा"
+                      placeholder="गोत्र प्रविष्ट करा / Enter Gotra"
                       value={gotraCustom}
                       onChange={(e) => { setGotraCustom(e.target.value); handleGotraChange(e.target.value); }}
                     />
@@ -1051,7 +1049,7 @@ export default function PurposeDropdown() {
                   })() && (
                     <>
                       <div className="pd-field">
-                        <label className="pd-label">Enter Amount / रक्कम टाका *</label>
+                        <label className="pd-label">रक्कम टाका / Enter Amount *</label>
                         <input
                           type="number"
                           className="pd-input"
@@ -1064,7 +1062,7 @@ export default function PurposeDropdown() {
                       </div>
                       {Number(amount) > 0 && (
                         <div className="pd-amount-row pd-amount-row--green">
-                          <span className="pd-amount-row__label">Amount / रक्कम</span>
+                          <span className="pd-amount-row__label">रक्कम / Amount</span>
                           <span className="pd-amount-row__value">₹{Number(amount).toLocaleString("en-IN")}</span>
                         </div>
                       )}
@@ -1080,7 +1078,7 @@ export default function PurposeDropdown() {
                     return isFixed;
                   })() && (
                     <div className="pd-amount-row pd-amount-row--green">
-                      <span className="pd-amount-row__label">Fixed Amount / निश्चित रक्कम</span>
+                      <span className="pd-amount-row__label">निश्चित रक्कम / Fixed Amount</span>
                       <span className="pd-amount-row__value">₹{specialDisplayAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
@@ -1095,14 +1093,14 @@ export default function PurposeDropdown() {
 
                     return (
                       <div className="pd-field">
-                        <label className="pd-label">Payment Type / पेमेंट प्रकार</label>
+                        <label className="pd-label">पेमेंट प्रकार / Payment Type</label>
                         <div className="pd-pay-grid">
                           <button
                             type="button"
                             className="pd-pay-btn pd-pay-btn--full"
                             onClick={() => handlePaymentTypeChange("full")}
                           >
-                            <span className="pd-pay-icon">💰</span>
+                            <span className="pd-pay-icon"></span>
                             <span className="pd-pay-title">Full Payment</span>
                             <span className="pd-pay-sub">₹{specialDisplayAmount.toLocaleString("en-IN")}</span>
                           </button>
@@ -1112,7 +1110,7 @@ export default function PurposeDropdown() {
                               className="pd-pay-btn pd-pay-btn--advance"
                               onClick={() => handlePaymentTypeChange("advance")}
                             >
-                              <span className="pd-pay-icon">📋</span>
+                              <span className="pd-pay-icon"></span>
                               <span className="pd-pay-title">Advance Payment</span>
                               <span className="pd-pay-sub">Pay partial now</span>
                             </button>
@@ -1127,11 +1125,11 @@ export default function PurposeDropdown() {
                   {paymentType === "advance" && (
                     <>
                       <div className="pd-field">
-                        <label className="pd-label">Advance Amount / आगाऊ रक्कम *</label>
+                        <label className="pd-label">आगाऊ रक्कम / Advance Amount *</label>
                         <input type="number" className="pd-input" placeholder="Enter advance amount" min="1" max={baseAmount} value={payNowAmount} onChange={handlePayNowChange} onWheel={(e) => e.target.blur()} />
                       </div>
                       <div className="pd-amount-row pd-amount-row--amber">
-                        <span className="pd-amount-row__label">Remaining / उर्वरित रक्कम</span>
+                        <span className="pd-amount-row__label">उर्वरित रक्कम / Remaining</span>
                         <span className="pd-amount-row__value">₹{Math.max(baseAmount - Number(payNowAmount || 0), 0).toLocaleString("en-IN")}</span>
                       </div>
                     </>
@@ -1143,7 +1141,7 @@ export default function PurposeDropdown() {
                       {selectedSpecialSeva?.allowMultiDate ? (
                         <>
                           <label className="pd-label">
-                            Select Dates / तारखा निवडा *
+                            तारखा निवडा / Select Dates *
                             <span className="pd-label-hint"> — click to select/deselect</span>
                           </label>
                           <div className="pd-calendar-wrap">
@@ -1170,7 +1168,7 @@ export default function PurposeDropdown() {
                         </>
                       ) : (
                         <>
-                          <label className="pd-label">Booking Date / बुकिंग तारीख *</label>
+                          <label className="pd-label">बुकिंग तारीख / Booking Date *</label>
                           <DatePicker {...specialDatePickerProps} />
                         </>
                       )}
@@ -1190,7 +1188,7 @@ export default function PurposeDropdown() {
         <div className="pd-flow">
 
           <div className="pd-field">
-            <label className="pd-label">Purpose / उद्देश *</label>
+            <label className="pd-label">उद्देश / Purpose *</label>
             <select
               className="pd-select"
               value={selectedSevaId}
@@ -1198,7 +1196,7 @@ export default function PurposeDropdown() {
               disabled={isEditMode}
               style={{ opacity: isEditMode ? 0.7 : 1, cursor: isEditMode ? "not-allowed" : "pointer" }}
             >
-              <option value="">— Choose Purpose / उद्देश निवडा —</option>
+              <option value="">— उद्देश निवडा / Choose Purpose —</option>
               {regularSevas.map((seva, i) => (
                 <option key={i} value={seva._id || seva.id}>
                   {seva.displayName}
@@ -1213,7 +1211,7 @@ export default function PurposeDropdown() {
               {/* Fixed amount — no sub-purposes */}
               {selectedSeva.amountType === "fixed" && !selectedSeva.hasSubPurposes && (
                 <div className="pd-amount-row pd-amount-row--green">
-                  <span className="pd-amount-row__label">Amount / रक्कम</span>
+                  <span className="pd-amount-row__label">रक्कम / Amount</span>
                   <span className="pd-amount-row__value">₹{Number(selectedSeva.amount).toLocaleString("en-IN")}</span>
                 </div>
               )}
@@ -1238,7 +1236,7 @@ export default function PurposeDropdown() {
               {/* FIX 3: Gotra — only when hasGotra is true */}
               {selectedSeva.hasGotra && (selectedSubPurpose || !selectedSeva.hasSubPurposes) && (
                 <div className="pd-field">
-                  <label className="pd-label">Gotra / गोत्र</label>
+                  <label className="pd-label">गोत्र / Gotra</label>
                   <select
                     className="pd-select"
                     value={ABHISHEK_GOTRAS.includes(gotra) ? gotra : gotra ? "Other" : ""}
@@ -1248,14 +1246,14 @@ export default function PurposeDropdown() {
                     }}
                     disabled={isEditMode}
                   >
-                    <option value="">— Select Gotra / गोत्र निवडा —</option>
+                    <option value="">— गोत्र निवडा / Select Gotra —</option>
                     {ABHISHEK_GOTRAS.map((g, i) => <option key={i} value={g}>{g}</option>)}
                   </select>
                   {(gotra === "Other" || (gotra && !ABHISHEK_GOTRAS.slice(0, -1).includes(gotra))) && (
                     <input
                       className="pd-input"
                       style={{ marginTop: "8px" }}
-                      placeholder="Enter Gotra / गोत्र प्रविष्ट करा"
+                      placeholder="गोत्र प्रविष्ट करा / Enter Gotra"
                       value={gotraCustom}
                       onChange={(e) => { setGotraCustom(e.target.value); handleGotraChange(e.target.value); }}
                     />
@@ -1273,14 +1271,14 @@ export default function PurposeDropdown() {
                   <div className="pd-field">
                     <label className="pd-label">
                       {selectedSeva.allowMultiDate
-                        ? "Price Per Date / प्रति तारीख किंमत *"
-                        : "Enter Amount / रक्कम टाका *"}
+                        ? "प्रति तारीख किंमत / Price Per Date *"
+                        : "रक्कम टाका / Enter Amount *"}
                     </label>
                     <input type="number" className="pd-input" placeholder="Enter amount" min="1" value={amount} onChange={handleAmountChange} onWheel={(e) => e.target.blur()} />
                   </div>
                   {Number(amount) > 0 && !selectedSeva.allowMultiDate && (
                     <div className="pd-amount-row pd-amount-row--green">
-                      <span className="pd-amount-row__label">Amount / रक्कम</span>
+                      <span className="pd-amount-row__label">रक्कम / Amount</span>
                       <span className="pd-amount-row__value">₹{Number(amount).toLocaleString("en-IN")}</span>
                     </div>
                   )}
@@ -1302,7 +1300,7 @@ export default function PurposeDropdown() {
                   )}
                   <div className="pd-field">
                     <label className="pd-label">
-                      Select Dates / तारखा निवडा *
+                      तारखा निवडा / Select Dates *
                       <span className="pd-label-hint"> — click to select/deselect</span>
                     </label>
                     <div className="pd-calendar-wrap">
@@ -1343,7 +1341,7 @@ export default function PurposeDropdown() {
                   </div>
                   <div className="pd-field">
                     <label className="pd-label">
-                      Select Dates / तारखा निवडा *
+                      तारखा निवडा / Select Dates *
                       <span className="pd-label-hint"> — click to select/deselect</span>
                     </label>
                     <div className="pd-calendar-wrap">
@@ -1385,16 +1383,16 @@ export default function PurposeDropdown() {
                   if (!activeAmt) return null;
                   return (
                     <div className="pd-field">
-                      <label className="pd-label">Payment Type / पेमेंट प्रकार</label>
+                      <label className="pd-label">पेमेंट प्रकार / Payment Type</label>
                       <div className="pd-pay-grid">
                         <button type="button" className="pd-pay-btn pd-pay-btn--full" onClick={() => handlePaymentTypeChange("full")}>
-                          <span className="pd-pay-icon">💰</span>
+                          <span className="pd-pay-icon"></span>
                           <span className="pd-pay-title">Full Payment</span>
                           <span className="pd-pay-sub">₹{activeAmt.toLocaleString("en-IN")}</span>
                         </button>
                         {activePayOpts === "full_advance" && (
                           <button type="button" className="pd-pay-btn pd-pay-btn--advance" onClick={() => handlePaymentTypeChange("advance")}>
-                            <span className="pd-pay-icon">📋</span>
+                            <span className="pd-pay-icon"></span>
                             <span className="pd-pay-title">Advance Payment</span>
                             <span className="pd-pay-sub">Pay partial now</span>
                           </button>
@@ -1411,16 +1409,16 @@ export default function PurposeDropdown() {
                 <>
                   {isEditMode && (
                     <div className="pd-amount-row pd-amount-row--blue">
-                      <span className="pd-amount-row__label">Paid Amount / भरलेली रक्कम</span>
+                      <span className="pd-amount-row__label">भरलेली रक्कम / Paid Amount</span>
                       <span className="pd-amount-row__value">₹{previousPaidAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   <div className="pd-field">
-                    <label className="pd-label">Pay Now / आता भरा *</label>
+                    <label className="pd-label">आता भरा / Pay Now *</label>
                     <input type="number" className="pd-input" placeholder="Enter amount to pay now" min="1" max={currentRemainingAmount} value={payNowAmount} onChange={handlePayNowChange} onWheel={(e) => e.target.blur()} />
                   </div>
                   <div className="pd-amount-row pd-amount-row--amber">
-                    <span className="pd-amount-row__label">Remaining / उर्वरित रक्कम</span>
+                    <span className="pd-amount-row__label">उर्वरित रक्कम / Remaining</span>
                     <span className="pd-amount-row__value">₹{remainingAmount.toLocaleString("en-IN")}</span>
                   </div>
                 </>
@@ -1442,7 +1440,7 @@ export default function PurposeDropdown() {
                 return true;
               })() && (
                 <div className="pd-field">
-                  <label className="pd-label">Booking Date / बुकिंग तारीख *</label>
+                  <label className="pd-label">बुकिंग तारीख / Booking Date *</label>
                   <DatePicker {...regularDatePickerProps} />
                 </div>
               )}

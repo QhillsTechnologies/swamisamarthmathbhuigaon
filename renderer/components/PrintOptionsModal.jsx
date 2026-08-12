@@ -34,7 +34,7 @@ export default function PrintOptionsModal({ onClose, booking }) {
             className="primary-btn"
             onClick={() => handlePrint("list")}
           >
-            📄 List Print
+            List Print
           </button>
 
           {/* INTERNAL PRINT */}
@@ -42,7 +42,7 @@ export default function PrintOptionsModal({ onClose, booking }) {
             className="primary-btn"
             onClick={() => handlePrint("internal")}
           >
-            🧾 Internal Receipt
+            Internal Receipt
           </button>
 
         </div>

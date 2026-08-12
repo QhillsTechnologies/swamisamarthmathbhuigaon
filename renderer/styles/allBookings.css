@@ -1,21 +1,22 @@
 /* ==========================================
-   MAIN
+   ALL-BOOKINGS PAGE LAYOUT
+   Flex column so the table header is always
+   visible and only the rows area scrolls.
 ========================================== */
-.db-main {
+.ab-page {
+  display: flex;
+  flex-direction: column;
   height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-width: 100%;
+  overflow: hidden;
 }
 
 /* ==========================================
    SEARCH BOX
 ========================================== */
 .ab-sticky-top {
-  position: sticky;
-  top: 0;
-  z-index: 20;
+  flex-shrink: 0;
   background: #fff;
+  position: static;
 }
 
 .ab-search-box {
@@ -40,10 +41,13 @@
 }
 
 /* ==========================================
-   BOOKING LIST
+   BOOKING LIST — fills remaining height
 ========================================== */
 .ab-booking-list {
-  margin-top: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin-top: 10px;
 }
 
 /* ==========================================
@@ -59,41 +63,40 @@
 }
 
 /* ==========================================
-   OUTER CONTAINER — no overflow here
+   OUTER CONTAINER — flex column, fills booking-list height
 ========================================== */
 .ab-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
 /* ==========================================
-   STICKY HEADER WRAPPER
-   — sticks on vertical scroll
-   — hidden overflow so it scrolls with table via JS
+   FIXED HEADER ROW — always visible, never scrolls
 ========================================== */
 .ab-sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  flex-shrink: 0;
   background: #ffffff;
   border-radius: 16px 16px 0 0;
   border-bottom: 2px solid #e5e7eb;
   padding: 0 25px;
-  overflow: hidden;   /* clips content, JS syncs scroll */
+  overflow: hidden;   /* clips horizontally; JS syncs scroll */
 }
 
 /* ==========================================
-   SCROLLABLE BODY — horizontal scroll here only
-   Native scrollbar hidden; sticky one used instead
+   SCROLLABLE BODY — both axes scroll here
 ========================================== */
 .ab-table-scroll {
+  flex: 1;
+  min-height: 0;
   overflow-x: auto;
+  overflow-y: auto;
   padding: 0 25px 10px;
-  scrollbar-width: none;        /* Firefox */
-}
-.ab-table-scroll::-webkit-scrollbar {
-  display: none;                /* Chrome/Safari */
+  scrollbar-width: thin;
 }
 
 /* ==========================================
@@ -106,7 +109,7 @@
     130px   /* Booking ID */
     180px   /* Name */
     140px   /* Phone */
-    320px   /* Purpose */
+    210px   /* Purpose */
     130px   /* Total Amount */
     130px   /* Paid Amount */
     120px   /* Remaining */
@@ -115,7 +118,7 @@
     100px;  /* Action */
   gap: 20px;
   align-items: center;
-  min-width: 1700px;
+  min-width: 1590px;
 }
 
 /* ==========================================
@@ -143,7 +146,7 @@
    ROW STYLES
 ========================================== */
 .ab-list {
-  min-width: 1700px;
+  min-width: 1590px;
 }
 
 .ab-row {
@@ -166,27 +169,6 @@
   min-width: 0;
 }
 
-/* ==========================================
-   STICKY BOTTOM SCROLLBAR
-   — sticks on vertical scroll
-   — synced to table scroll via JS
-========================================== */
-.ab-sticky-scrollbar {
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
-  overflow-x: auto;
-  overflow-y: hidden;
-  background: #ffffff;
-  border-top: 1px solid #f0f0f0;
-  border-radius: 0 0 16px 16px;
-  padding: 4px 25px;
-}
-
-.ab-scrollbar-inner {
-  min-width: 1700px;
-  height: 1px;
-}
 
 /* ==========================================
    COLUMN STYLES
@@ -205,13 +187,22 @@
   padding-left: 20px;
 }
 
-.ab-phone,
-.ab-date {
+.ab-phone {
   font-size: 14px;
   color: #374151;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ab-date {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+  /* Multi-date bookings can list several dates here — wrap instead of
+     truncating with an ellipsis so every date stays visible. */
+  white-space: normal;
+  word-break: break-word;
 }
 
 .ab-purpose {
@@ -239,7 +230,7 @@
 /* ==========================================
    STATUS COLORS
 ========================================== */
-.ab-status-approved  { color: #16a34a; }
+.ab-status-approved  { color: #059669; }
 .ab-status-pending {
   color: #dc2626;
   font-weight: 700;
@@ -269,6 +260,17 @@
 .ab-cancel-btn:hover {
   background: #dc2626;
   color: #fff;
+}
+
+.ab-cancel-reason {
+  display: block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
 }
 
 /* ==========================================
@@ -327,9 +329,12 @@
 ========================================== */
 @media (max-width: 1200px) {
   .ab-sticky-header,
-  .ab-header-spacer,
-  .ab-sticky-scrollbar {
+  .ab-header-spacer {
     display: none;
+  }
+
+  .ab-table-scroll {
+    overflow-y: auto;
   }
 
   .ab-row {

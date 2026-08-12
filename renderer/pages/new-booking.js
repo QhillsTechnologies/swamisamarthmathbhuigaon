@@ -23,7 +23,7 @@ function NewBooking() {
   ====================================================== */
   const handleContinue = () => {
     if (!selected) {
-      setErrorMsg("Please select receipt type / कृपया पावती प्रकार निवडा");
+      setErrorMsg("कृपया पावती प्रकार निवडा / Please select receipt type");
       return;
     }
     setErrorMsg("");
@@ -45,12 +45,12 @@ function NewBooking() {
       <Sidebar />
 
       <div className="db-main">
-        <Header title="New Booking / नवीन बुकिंग" />
+        <Header title="नवीन बुकिंग / New Booking" />
 
         <p className="nb-step-text">Step 1 of 2</p>
 
         <div className="db-section nb-booking-center">
-          <h3>Select Receipt Type / पावती प्रकार निवडा</h3>
+          <h3>पावती प्रकार निवडा / Select Receipt Type</h3>
 
           <div className="nb-receipt-options">
 
@@ -77,7 +77,7 @@ function NewBooking() {
           {/* ERROR MESSAGE */}
           {errorMsg && (
             <div style={{ background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "6px", color: "#dc2626", padding: "8px 12px", margin: "10px 0", fontSize: "13px" }}>
-              ⚠️ {errorMsg}
+              {errorMsg}
             </div>
           )}
 
@@ -88,7 +88,7 @@ function NewBooking() {
               disabled={!selected}
               onClick={handleContinue}
             >
-              Continue / पुढे चला →
+              पुढे चला / Continue →
             </button>
           </div>
 

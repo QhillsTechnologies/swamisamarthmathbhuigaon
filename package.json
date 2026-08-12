@@ -2,7 +2,7 @@
   "private": true,
   "name": "swami-samarth-math",
   "description": "Swami Samarth Math Management System",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Sanket Nikam",
   "type": "module",
   "main": "main/main.js",
@@ -13,9 +13,14 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "cloudflared": "^0.7.1",
     "date-fns": "^4.2.1",
     "electron-serve": "^3.0.0",
     "electron-store": "^11.0.2",
+    "electron-updater": "^6.8.9",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "qrcode": "^1.5.4",
     "react-datepicker": "^9.1.0",
     "react-icons": "^5.6.0"
   },
@@ -46,6 +51,17 @@
       "app/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "node_modules/cloudflared/bin",
+        "to": "cloudflared-bin"
+      }
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "QhillsTechnologies",
+      "repo": "swamisamarthmathbhuigaon"
+    },
     "extraMetadata": {
       "main": "app/main.js"
     },

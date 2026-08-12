@@ -6,14 +6,6 @@ import withAuth from "../utils/withAuth";
 import apiRequest from "../services/api";
 import Pagination from "../components/Pagination";
 
-import {
-  FaCalendarAlt,
-  FaChartLine,
-  FaExclamationTriangle,
-  FaBan,
-  FaUsers,
-} from "react-icons/fa";
-
 function Dashboard() {
   const [stats, setStats] = useState({
     totalBookings: 0,
@@ -94,25 +86,16 @@ function Dashboard() {
           }, {})
         );
 
-        /* COUNT UNIQUE BOOKING GROUPS */
-        const uniqueBookingGroups = [
-          ...new Set(
-            allBookings.map(
-              (booking) => booking.bookingGroupId || booking.bookingId
-            )
-          ),
-        ];
-
         /* UPDATE STATS */
         setStats({
-          totalBookings: uniqueBookingGroups.length,
+          totalBookings: allBookings.length,
           totalRevenue,
           pendingDues,
           todayBookings,
           cancelledBookings,
         });
 
-        setRecentBookings(validRecentBookings.slice(0, 5));
+        setRecentBookings(validRecentBookings.slice(0, 7));
         setRevenueByPurpose(revenueByPurpose);
         setRevPage(1);
       } catch (err) {
@@ -144,7 +127,7 @@ function Dashboard() {
       <div className="db-dashboard">
         <Sidebar />
         <div className="db-main">
-          <Header title="Dashboard / मुख्यपृष्ठ" />
+          <Header title="मुख्यपृष्ठ / Dashboard" />
           <p style={{ padding: "20px" }}>Loading dashboard...</p>
         </div>
       </div>
@@ -159,11 +142,11 @@ function Dashboard() {
       <Sidebar />
 
       <div className="db-main">
-        <Header title="Dashboard / मुख्यपृष्ठ" />
+        <Header title="मुख्यपृष्ठ / Dashboard" />
 
         {fetchError && (
           <div style={{ background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "6px", color: "#dc2626", padding: "8px 12px", margin: "10px 0", fontSize: "13px" }}>
-            ⚠️ {fetchError}
+            {fetchError}
           </div>
         )}
 
@@ -172,35 +155,30 @@ function Dashboard() {
           <StatCard
             title="Total Bookings"
             value={stats.totalBookings}
-            icon={<FaCalendarAlt />}
             color="orange"
             link="/dashboard-details?type=bookings"
           />
           <StatCard
             title="Total Revenue"
-            value={`₹${stats.totalRevenue}`}
-            icon={<FaChartLine />}
+            value={`₹${Number(stats.totalRevenue || 0).toLocaleString("en-IN")}`}
             color="green"
             link="/dashboard-details?type=revenue"
           />
           <StatCard
             title="Pending Dues"
-            value={`₹${stats.pendingDues}`}
-            icon={<FaExclamationTriangle />}
+            value={`₹${Number(stats.pendingDues || 0).toLocaleString("en-IN")}`}
             color="orange"
             link="/dashboard-details?type=pending"
           />
           <StatCard
             title="Today's Bookings"
             value={stats.todayBookings}
-            icon={<FaUsers />}
             color="blue"
             link="/dashboard-details?type=today"
           />
           <StatCard
             title="Cancelled Bookings"
             value={stats.cancelledBookings}
-            icon={<FaBan />}
             color="orange"
             link="/dashboard-details?type=cancelled"
           />
@@ -211,7 +189,7 @@ function Dashboard() {
 
           {/* ===== REVENUE BY PURPOSE ===== */}
           <div className="db-section">
-            <h3>Revenue by Purpose / उद्देशानुसार महसूल</h3>
+            <h3>उद्देशानुसार महसूल / Revenue by Purpose</h3>
 
             {revenueByPurpose.length === 0 ? (
               <div className="db-empty-state">
@@ -241,7 +219,7 @@ function Dashboard() {
 
           {/* ===== RECENT BOOKINGS ===== */}
           <div className="db-section">
-            <h3>Recent Bookings / अलीकडील बुकिंग</h3>
+            <h3>अलीकडील बुकिंग / Recent Bookings</h3>
 
             {recentBookings.length === 0 ? (
               <div className="db-empty-state">
@@ -261,7 +239,7 @@ function Dashboard() {
                   </div>
 
                   <p className="db-booking-amount">
-                    ₹{booking.paidAmount || booking.advance || booking.amount || 0}
+                    ₹{Number(booking.paidAmount || booking.advance || booking.amount || 0).toLocaleString("en-IN")}
                   </p>
                 </div>
               ))

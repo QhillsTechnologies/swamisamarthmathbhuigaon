@@ -1,0 +1,118 @@
+.receipt-list {
+  padding: 16px;
+}
+
+.receipt-card {
+  position: relative;
+  width: 21cm;
+  height: 14.8cm;
+  margin: 0 auto 24px auto;
+  overflow: hidden;
+}
+
+.field {
+  position: absolute;
+  font-family: 'Noto Sans Devanagari', Arial, sans-serif;
+  color: #1a1a1a;
+  line-height: 1.15;
+}
+.guides .field {
+  outline: 1px dashed rgba(200, 0, 0, 0.5);
+  background: rgba(255, 220, 0, 0.10);
+}
+
+.r-bookingid  { left: 6.2cm;  top: 4.00cm;  width: 3.0cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+.r-date       { left: 16.2cm; top: 4.00cm;  width: 4.5cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+.r-name       { left: 6.0cm;  top: 5.00cm;  width: 17.0cm; height: 0.7cm; font-size: 14pt; font-weight: bold; }
+.r-address    { left: 2.8cm;  top: 6.00cm;  width: 18.3cm; height: 1.7cm; font-size: 12pt; font-weight: bold; }
+.r-phone      { left: 15.2cm; top: 7.00cm;  width: 5.4cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+/* Name of whoever updated the record in CMS -> printed just below the address block */
+.r-updatedby  { left: 1.0cm;  top: 7.00cm;  width: 6.0cm;  height: 0.4cm; font-size: 11pt; font-style: italic; }
+
+/* "सेवा प्रत्यर्थ अक्षरी" slot -> mapped to item.purpose, with bookingDate
+   appended in brackets, e.g. "देणगी (16-07-2026)" */
+.r-purpose    { left: 4.7cm;  top: 8.00cm;  width: 12.2cm; height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+/* "गोत्र" label slot */
+.r-gotra      { left: 2.8cm;  top: 9.80cm;  width: 2.9cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+/* panCard -> printed directly below गोत्र */
+.r-pancard      { left: 5.3cm;  top: 11.00cm; width: 5.0cm;  height: 0.6cm; font-size: 11pt; font-weight: bold; }
+.r-chequenumber { left: 1.3cm;  top: 11.7cm; width: 5.0cm;  height: 0.5cm; font-size: 11pt; }
+.r-bankname     { left: 1.3cm;  top: 12.3cm; width: 6.0cm;  height: 0.5cm; font-size: 11pt; }
+.r-orderid      { left: 1.5cm;  top: 11.8cm; width: 12.0cm; height: 0.5cm; font-size: 11pt; }
+
+.r-amountwords{ left: 3.0cm;  top: 8.90cm;  width: 11.7cm; height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+/* "देयकाची पद्धत" (payment mode) slot -> mapped to item.bank */
+.r-bank       { left: 8.7cm;  top: 9.80cm;  width: 5.6cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
+
+.r-amount {
+  /* left was pasted as "1559cm" — clearly a typo (off the 21cm-wide card).
+     Corrected to 15.5cm, matching the equivalent field in the normal
+     template's just-recalibrated value. Flag if this wasn't intended. */
+  left: 15.5cm; top: 9.55cm; width: 3.5cm; height: 1.2cm;
+  font-size: 15pt; font-weight: bold; text-align: center;
+  display: flex; align-items: center; justify-content: center;
+}
+.controls {
+  padding: 12px 16px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.summary { font-size: 13px; color: #555; flex: 1; }
+.printBtn {
+  background: #1a73e8;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.printBtn:hover { background: #1558b0; }
+
+.status {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+}
+
+/* ===================================================================
+   PRINT LAYOUT
+   =================================================================== */
+@media print {
+  @page {
+    size: 21cm 14.8cm;
+    margin: 0;
+  }
+
+  .controls { display: none !important; }
+  .status   { display: none !important; }
+  .receipt-list { padding: 0; }
+
+  .receipt-card {
+    margin: 0;
+    position: relative; 
+    width: 21cm;
+    height: 14.8cm;
+    overflow: hidden;
+    page-break-after: always;
+    page-break-inside: avoid;
+    break-after: page;
+    break-inside: avoid;
+  }
+  .receipt-card:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  .guides .field {
+    outline: none;
+    background: transparent;
+  }
+}

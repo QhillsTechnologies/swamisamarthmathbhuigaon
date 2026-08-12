@@ -5,7 +5,8 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/register"); // 🔥 redirect
+    const token = localStorage.getItem("token");
+    router.replace(token ? "/dashboard" : "/login");
   }, []);
 
   return null;

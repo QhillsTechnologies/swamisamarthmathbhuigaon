@@ -21,7 +21,6 @@ export default function Header({ title }) {
     setUser({ name, role });
   }, []);
 
-  // 🔥 LOGOUT FUNCTION
   const handleLogout = () => {
     localStorage.clear();
     router.push("/login");
@@ -36,7 +35,7 @@ export default function Header({ title }) {
       </div>
 
       <div className="role-box">
-        👤 {user.name} ({user.role})
+        {user.name} ({user.role})
         <span className="logout-btn" onClick={handleLogout}>
           Logout
         </span>
