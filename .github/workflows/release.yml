@@ -10,6 +10,8 @@ permissions:
 jobs:
   build-and-release:
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -27,10 +29,5 @@ jobs:
           BASE=$(node -p "require('./package.json').version.split('.').slice(0,2).join('.')")
           npm pkg set version="$BASE.${{ github.run_number }}"
 
-      - name: Build renderer
+      - name: Build renderer and package installer
         run: npm run build
-
-      - name: Build and publish installer
-        run: npx electron-builder --win --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
