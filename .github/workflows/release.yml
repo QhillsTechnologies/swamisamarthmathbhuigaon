@@ -30,6 +30,4 @@ jobs:
           npm pkg set version="$BASE.${{ github.run_number }}"
 
       - name: Build renderer and package installer
-        run: npm run build
-        env:
-          DEBUG: electron-builder,electron-builder:*
+        run: npx nextron build --publish always
