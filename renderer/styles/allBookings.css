@@ -262,6 +262,28 @@
   color: #fff;
 }
 
+.ab-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+
+.ab-edit-btn:hover {
+  background: #2563eb;
+  color: #fff;
+}
+
 .ab-cancel-reason {
   display: block;
   max-width: 160px;

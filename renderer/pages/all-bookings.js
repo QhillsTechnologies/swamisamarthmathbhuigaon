@@ -20,6 +20,15 @@ function AllBookings() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 15;
 
+  const [editId, setEditId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPurpose, setEditPurpose] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editPaidAmount, setEditPaidAmount] = useState("");
+  const [editMsg, setEditMsg] = useState({ text: "", type: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
   const tableRef = useRef(null);
   const headerRef = useRef(null);
 
@@ -120,6 +129,107 @@ function AllBookings() {
     } catch (err) {
       console.error("Cancel booking error:", err);
       setCancelMsg({ text: err.message || "Failed to cancel booking", type: "error" });
+    }
+  };
+
+  /* ======================================================
+     EDIT BOOKING CONTACT (Admin only)
+  ====================================================== */
+  const openEdit = (booking) => {
+    setEditId(booking._id || booking.id);
+    setEditName(booking.name || "");
+    setEditPhone(String(booking.phone || ""));
+    setEditPurpose(booking.purpose || "");
+    setEditAmount(String(booking.amount ?? ""));
+    setEditPaidAmount(String(booking.advance ?? booking.paidAmount ?? ""));
+    setEditMsg({ text: "", type: "" });
+  };
+
+  const closeEdit = () => {
+    setEditId(null);
+    setEditName("");
+    setEditPhone("");
+    setEditPurpose("");
+    setEditAmount("");
+    setEditPaidAmount("");
+    setEditMsg({ text: "", type: "" });
+  };
+
+  // Remaining is always derived from amount - paid so the three stay
+  // consistent — admin edits amount/paid, remaining follows automatically.
+  const editRemainingAmount = Math.max(
+    Number(editAmount || 0) - Number(editPaidAmount || 0),
+    0
+  );
+
+  const confirmEdit = async () => {
+    const name = editName.trim();
+    const phone = String(editPhone).trim();
+    const purpose = editPurpose.trim();
+    const amount = Number(editAmount || 0);
+    const paidAmount = Number(editPaidAmount || 0);
+
+    if (!/^[A-Za-z\s]+$/.test(name)) {
+      setEditMsg({ text: "Name should contain only letters and spaces", type: "error" });
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setEditMsg({ text: "Invalid mobile number", type: "error" });
+      return;
+    }
+    if (!purpose) {
+      setEditMsg({ text: "Purpose is required", type: "error" });
+      return;
+    }
+    if (amount <= 0) {
+      setEditMsg({ text: "Amount must be greater than 0", type: "error" });
+      return;
+    }
+    if (paidAmount < 0 || paidAmount > amount) {
+      setEditMsg({ text: "Paid amount cannot exceed the total amount", type: "error" });
+      return;
+    }
+
+    try {
+      setEditSaving(true);
+      const res = await apiRequest("/update_booking_contact", {
+        method: "POST",
+        body: JSON.stringify({
+          id: editId,
+          name,
+          phone,
+          purpose,
+          amount,
+          paidAmount,
+          remainingAmount: editRemainingAmount,
+        }),
+      });
+      const updated = res?.booking;
+      setBookings((prev) =>
+        prev.map((booking) =>
+          (booking._id || booking.id) === editId
+            ? {
+                ...booking,
+                ...(updated || {
+                  name,
+                  phone,
+                  purpose,
+                  amount,
+                  advance: paidAmount,
+                  paidAmount,
+                  remainingAmount: editRemainingAmount,
+                }),
+              }
+            : booking
+        )
+      );
+      closeEdit();
+      setCancelMsg({ text: "Booking updated successfully", type: "success" });
+    } catch (err) {
+      console.error("Update booking error:", err);
+      setEditMsg({ text: err.message || "Failed to update booking", type: "error" });
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -274,8 +384,8 @@ function AllBookings() {
                         <div className="ab-id">
                           {booking.bookingId || rowKey || "-"}
                         </div>
-                        <div className="ab-name">{booking.name || "-"}</div>
-                        <div className="ab-phone">{booking.phone || "-"}</div>
+                        <div className="ab-name" title={booking.name || ""}>{booking.name || "-"}</div>
+                        <div className="ab-phone" title={String(booking.phone || "")}>{booking.phone || "-"}</div>
                         <div className="ab-purpose">{booking.purpose || "-"}</div>
                         <div className="ab-amount">{formatCurrency(booking.amount)}</div>
                         <div className="ab-amount">
@@ -295,7 +405,15 @@ function AllBookings() {
                         <div className="ab-date">
                           {formatBookingDate(booking)}
                         </div>
-                        <div>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                          {userRole === "Admin" && (
+                            <button
+                              className="ab-edit-btn"
+                              onClick={() => openEdit(booking)}
+                            >
+                              Edit
+                            </button>
+                          )}
                           {showCancelBtn ? (
                             <button
                               className="ab-cancel-btn"
@@ -358,6 +476,75 @@ function AllBookings() {
                 className="secondary-btn"
                 onClick={() => { setConfirmId(null); setCancelReason(""); }}
               >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* EDIT MODAL */}
+      {editId && (
+        <div className="ab-modal-overlay">
+          <div className="ab-modal">
+            <p>Edit booking contact details</p>
+            {editMsg.type === "error" && editMsg.text && (
+              <div style={{ background: "#fee2e2", border: "1px solid #ef4444", borderRadius: "6px", color: "#dc2626", padding: "6px 10px", fontSize: "12px", margin: "6px 0" }}>
+                {editMsg.text}
+              </div>
+            )}
+            <input
+              className="input"
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Name"
+              style={{ marginTop: "10px", marginBottom: "10px" }}
+            />
+            <input
+              className="input"
+              type="text"
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value)}
+              placeholder="Phone"
+              maxLength={10}
+              style={{ marginBottom: "10px" }}
+            />
+            <input
+              className="input"
+              type="text"
+              value={editPurpose}
+              onChange={(e) => setEditPurpose(e.target.value)}
+              placeholder="Purpose"
+              style={{ marginBottom: "10px" }}
+            />
+            <input
+              className="input"
+              type="number"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+              placeholder="Total Amount"
+              min="0"
+              onWheel={(e) => e.target.blur()}
+              style={{ marginBottom: "10px" }}
+            />
+            <input
+              className="input"
+              type="number"
+              value={editPaidAmount}
+              onChange={(e) => setEditPaidAmount(e.target.value)}
+              placeholder="Paid Amount"
+              min="0"
+              onWheel={(e) => e.target.blur()}
+              style={{ marginBottom: "10px" }}
+            />
+            <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "15px" }}>
+              Remaining Amount: ₹{editRemainingAmount.toLocaleString("en-IN")}
+            </div>
+            <div className="ab-modal-actions">
+              <button className="primary-btn" onClick={confirmEdit} disabled={editSaving}>
+                {editSaving ? "Saving..." : "Save Changes"}
+              </button>
+              <button className="secondary-btn" onClick={closeEdit}>
                 Close
               </button>
             </div>

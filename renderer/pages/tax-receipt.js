@@ -164,8 +164,9 @@ export default function TaxReceipt() {
     // 2. Name & phone
     if (!savedForm.name?.trim())         { showErr("Please enter devotee name"); return; }
     if (!validateName(savedForm.name))   { showErr("Name should contain only letters and spaces."); return; }
-    if (!savedForm.phone?.trim())        { showErr("Please enter phone number"); return; }
-    if (!validatePhone(savedForm.phone)) { showErr("Enter a valid 10-digit mobile number."); return; }
+    const savedPhone = String(savedForm.phone || "");
+    if (!savedPhone.trim())        { showErr("Please enter phone number"); return; }
+    if (!validatePhone(savedPhone)) { showErr("Enter a valid 10-digit mobile number."); return; }
     if (savedForm.email?.trim() && !validateEmail(savedForm.email)) { showErr("Please enter a valid email address."); return; }
 
     // 3. Event type
@@ -217,7 +218,7 @@ export default function TaxReceipt() {
       parentBookingId: savedForm.parentBookingId || "",
       smarnarth: savedForm.smarnarth?.trim() || "",
       name: savedForm.name?.trim() || "",
-      phone: savedForm.phone?.trim() || "",
+      phone: savedPhone.trim(),
       email: savedForm.email?.trim() || "",
       address: savedForm.address?.trim() || "",
       purpose: savedForm.purpose || "",
@@ -262,7 +263,7 @@ export default function TaxReceipt() {
             amount: advance,
             orderId,
             customerName: savedForm.name?.trim(),
-            customerPhone: savedForm.phone?.trim(),
+            customerPhone: savedPhone.trim(),
             customerEmail: savedForm.email?.trim() || "devotee@ssmvd.org",
           }),
         });

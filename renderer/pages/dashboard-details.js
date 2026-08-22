@@ -359,19 +359,19 @@ return (
                     }`}
                   >
                     {/* NAME */}
-                    <div className="details-name">
+                    <div className="details-name" title={booking.name || ""}>
                       {booking.name ||
                         "N/A"}
                     </div>
 
                     {/* PHONE */}
-                    <div className="details-phone">
+                    <div className="details-phone" title={String(booking.phone || "")}>
                       {booking.phone ||
                         "-"}
                     </div>
 
                     {/* PURPOSE */}
-                    <div className="details-purpose">
+                    <div className="details-purpose" title={booking.purpose || ""}>
                       {booking.purpose ||
                         "-"}
                     </div>
@@ -399,7 +399,7 @@ return (
                     {/* REASON COLUMN */}
                     {type ===
                       "cancelled" && (
-                      <div className="details-reason">
+                      <div className="details-reason" title={booking.reason || ""}>
                         {booking.reason ||
                           "No reason provided"}
                       </div>

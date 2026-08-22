@@ -89,7 +89,7 @@ function EditBooking() {
         setForm({
           name: booking.name || "",
           address: booking.address || "",
-          phone: booking.phone || "",
+          phone: String(booking.phone || ""),
           email: booking.email || "",
           payNow: "",
           bookingDate: booking.bookingDate
@@ -117,6 +117,10 @@ function EditBooking() {
           "bookingForm",
           JSON.stringify({
             ...booking,
+
+            // Bookings store phone as a Number — force it back to a string
+            // here so every downstream `.trim()` on saved.phone is safe.
+            phone: String(booking.phone || ""),
 
             // Normalize date for input type="date"
             bookingDate: booking.bookingDate
@@ -426,7 +430,7 @@ function EditBooking() {
         // Devotee details
         name: saved.name,
         address: saved.address,
-        phone: saved.phone,
+        phone: String(saved.phone || ""),
         email: saved.email,
 
         // Booking details
@@ -485,7 +489,7 @@ function EditBooking() {
             amount: payNow,
             orderId,
             customerName: saved.name?.trim(),
-            customerPhone: saved.phone?.trim(),
+            customerPhone: String(saved.phone || "").trim(),
             customerEmail: saved.email?.trim() || "devotee@ssmvd.org",
           }),
         });

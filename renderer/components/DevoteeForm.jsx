@@ -76,7 +76,7 @@ export default function DevoteeForm() {
           smarnarth: latest.smarnarth || "",
           name: latest.name || "",
           address: latest.address || "",
-          phone: latest.phone || phone,
+          phone: String(latest.phone || phone),
           email: latest.email || "",
           sendSms: form.sendSms,
         };

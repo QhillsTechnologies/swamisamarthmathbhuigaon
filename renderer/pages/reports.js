@@ -91,7 +91,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
   ====================================================== */
   const getCalculatedStats = (data = reportData) => {
     const totalRevenue = data
-      .filter((item) => (item.status || "").toLowerCase().trim() === "approved")
+      .filter((item) => (item.status || "").toLowerCase().trim() !== "cancelled")
       .reduce((sum, item) => sum + Number(item.paidAmount || item.advance || 0), 0);
 
     const pendingMap = new Map();
@@ -127,7 +127,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
       const headers = [
         "Booking ID", "Name", "Phone", "Purpose",
         "Receipt Type", "Bank", "Total Amount", "Paid Amount",
-        "Remaining Amount", "Status", "Booking Date",
+        "Remaining Amount", "Status", "Booking Date", "Created Date", "Created By",
       ];
 
       const rows = data.map((item) => [
@@ -143,6 +143,8 @@ const [selectedIds, setSelectedIds] = useState(new Set());
         item.remainingAmount || 0,
         item.status || "",
         formatBookingDateDisplay(item, ""),
+        formatCreatedDateDisplay(item, ""),
+        item.createdBy || "",
       ]);
 
       const csvContent = [headers, ...rows]
@@ -362,6 +364,15 @@ const [selectedIds, setSelectedIds] = useState(new Set());
       : emptyValue;
   };
 
+  // Created date = when the record itself was created/paid (backend's
+  // createdAt, falling back to Wix's own _createdDate) — distinct from
+  // bookingDate, which is the seva/event date and can fall outside the
+  // range the entry was actually created/paid in.
+  const formatCreatedDateDisplay = (item, emptyValue = "-") => {
+    const created = item.createdAt || item._createdDate;
+    return created ? new Date(created).toLocaleDateString("en-GB") : emptyValue;
+  };
+
   // ── Reusable table column config ──
   // Instead of repeating <td> blocks, define columns as data
   const columns = [
@@ -374,9 +385,14 @@ const [selectedIds, setSelectedIds] = useState(new Set());
     { header: "Remaining",    render: (item) => `₹${Number(item.remainingAmount || 0).toLocaleString("en-IN")}` },
     { header: "Status",       render: (item) => item.status || "-" },
     {
-      header: "Date",
+      header: "Booking Date",
       render: (item) => formatBookingDateDisplay(item),
     },
+    {
+      header: "Created Date",
+      render: (item) => formatCreatedDateDisplay(item),
+    },
+    { header: "Created By",   render: (item) => item.createdBy || "-" },
   ];
 
   const devoteeColumns = [
