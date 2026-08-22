@@ -31,3 +31,5 @@ jobs:
 
       - name: Build renderer and package installer
         run: npm run build
+        env:
+          DEBUG: electron-builder,electron-builder:*
