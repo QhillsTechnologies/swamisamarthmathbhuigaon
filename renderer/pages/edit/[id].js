@@ -1,6 +1,5 @@
 import { useRouter } from "next/router";
-import { useState, useEffect, useRef } from "react";
-import QRCode from "qrcode";
+import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import Header from "../../components/Header";
 import PurposeDropdown from "../../components/PurposeDropdown";
@@ -8,10 +7,6 @@ import withAuth from "../../utils/withAuth";
 import apiRequest from "../../services/api";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
-const ORDER_POLL_INTERVAL_MS = 3000;
-const ORDER_POLL_TIMEOUT_MS = 5 * 60 * 1000;
-const ONLINE_BANKS = ["ICICI Bank", "BCCB Bank", "SBI Bank"];
 
 /* Bank options — same set as the new-booking tax-receipt flow */
 const ALL_BANKS = [
@@ -50,19 +45,7 @@ function EditBooking() {
   const [chequeNumber, setChequeNumber] = useState("");
   const [chequeDate, setChequeDate] = useState("");
 
-  // Online payment (ICICI / SBI / BCCB via Cashfree) — QR shown on the
-  // customer-facing display device, paid from the customer's own phone.
-  // Same flow as tax-receipt.js's "isOnlineBank" branch.
-  const [showPayment, setShowPayment] = useState(false);
-  const [pendingBookingId, setPendingBookingId] = useState("");
-  const pendingBookingPayloadRef = useRef(null);
-  const pollTimerRef = useRef(null);
-  const pollStartRef = useRef(0);
-  const [displayUrl, setDisplayUrl] = useState("");
-  const [displayUrlQr, setDisplayUrlQr] = useState("");
-
   const isChequeSelected = selectedBank === "Cheque";
-  const isOnlineBank = ONLINE_BANKS.includes(selectedBank);
 
   const visibleBanks = booking?.is80G
     ? ALL_BANKS
@@ -191,79 +174,6 @@ function EditBooking() {
       );
     };
   }, [id]);
-
-  /* ======================================================
-     PAYMENT STATUS POLL (online bank branch)
-     Same shape as tax-receipt.js — payment completes on the
-     customer's own phone, so there's no local callback to hook into.
-  ====================================================== */
-  useEffect(() => {
-    if (!showPayment || !pendingBookingId) return;
-
-    pollStartRef.current = Date.now();
-    let cancelled = false;
-
-    const poll = async () => {
-      if (cancelled) return;
-      const elapsedMs = Date.now() - pollStartRef.current;
-      try {
-        const res = await apiRequest(`/payment_status?orderId=${encodeURIComponent(pendingBookingId)}&bank=${encodeURIComponent(selectedBank)}`);
-        const status = res?.status;
-
-        if (status === "PAID") {
-          finalizePaymentSuccess();
-          return;
-        }
-        if (status === "EXPIRED" || status === "TERMINATED" || status === "CANCELLED") {
-          setErrorMsg("Payment was not completed (expired or cancelled). Please try again.");
-          stopPaymentWait();
-          return;
-        }
-      } catch (err) {
-        console.error(`[payment-poll] network error elapsedMs=${elapsedMs} orderId=${pendingBookingId}`, err);
-      }
-
-      if (Date.now() - pollStartRef.current > ORDER_POLL_TIMEOUT_MS) {
-        setErrorMsg("Payment timed out. Please try again.");
-        stopPaymentWait();
-        return;
-      }
-      pollTimerRef.current = setTimeout(poll, ORDER_POLL_INTERVAL_MS);
-    };
-
-    poll();
-    return () => { cancelled = true; clearTimeout(pollTimerRef.current); };
-  }, [showPayment, pendingBookingId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /* Pairing QR for the customer display's tunnel URL (staff-facing hint) */
-  useEffect(() => {
-    window.ipc?.invoke?.("get-display-url").then((url) => setDisplayUrl(url || "")).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!displayUrl) { setDisplayUrlQr(""); return; }
-    QRCode.toDataURL(displayUrl, { width: 160, margin: 1 }).then(setDisplayUrlQr).catch(() => {});
-  }, [displayUrl]);
-
-  const stopPaymentWait = () => {
-    clearTimeout(pollTimerRef.current);
-    setShowPayment(false);
-    window.ipc?.send?.("display-reset");
-  };
-
-  const finalizePaymentSuccess = () => {
-    clearTimeout(pollTimerRef.current);
-    const bookingPayload = pendingBookingPayloadRef.current || {};
-    localStorage.setItem("lastBooking", JSON.stringify({
-      ...bookingPayload,
-      bookingId: pendingBookingId,
-      bank: "UPI",
-    }));
-    localStorage.removeItem("bookingForm");
-    window.ipc?.send?.("display-payment-success", { amount: bookingPayload.advance });
-    setShowPayment(false);
-    router.push(`/booking-success?id=${encodeURIComponent(pendingBookingId)}`);
-  };
 
   /* ======================================================
      HANDLE INPUT CHANGE
@@ -472,45 +382,6 @@ function EditBooking() {
         sendSms,
       };
 
-      if (isOnlineBank) {
-        // Step 1: Save to dedicated pending DB (separate from booking DB)
-        const pendingRes = await apiRequest("/create_pending_booking", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        const orderId = pendingRes?.orderId || "";
-        if (!orderId) { alert("Failed to create pending booking. Please try again."); return; }
-
-        // Step 2: Create Cashfree payment order using orderId as reference
-        const orderRes = await apiRequest("/create_payment_order", {
-          method: "POST",
-          body: JSON.stringify({
-            bank: selectedBank,
-            amount: payNow,
-            orderId,
-            customerName: saved.name?.trim(),
-            customerPhone: String(saved.phone || "").trim(),
-            customerEmail: saved.email?.trim() || "devotee@ssmvd.org",
-          }),
-        });
-
-        if (!orderRes?.link_url) {
-          alert("Could not initiate payment. Please try again.");
-          return;
-        }
-
-        // Step 3: Turn the Cashfree Payment Link into a QR code and push it
-        // to the customer-facing display device.
-        const qrDataUrl = await QRCode.toDataURL(orderRes.link_url, { width: 400, margin: 1 });
-
-        pendingBookingPayloadRef.current = payload;
-        setPendingBookingId(orderId);
-        window.ipc?.send?.("display-show-qr", { qrDataUrl, amount: payNow, orderId });
-        setShowPayment(true);
-        return;
-      }
-
-      // Cash / Card / Cheque — direct booking, same as before
       const data = await apiRequest(
         "/create_booking",
         {
@@ -675,7 +546,6 @@ function EditBooking() {
                 handlePaymentChange
               }
               onWheel={(e) => e.target.blur()}
-              disabled={showPayment}
             />
 
             <div className="amount-box">
@@ -705,28 +575,11 @@ function EditBooking() {
                     type="button"
                     className={`tr-bank-pill${bank.isCheque ? " tr-cheque-pill" : ""}${selectedBank === bank.id ? " tr-bank-active" : ""}`}
                     onClick={() => handleBankSelect(bank)}
-                    disabled={showPayment}
                   >
                     {bank.label}
                   </button>
                 ))}
               </div>
-              {isOnlineBank && displayUrl && (
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "6px" }}>
-                  {displayUrlQr && (
-                    <img
-                      src={displayUrlQr}
-                      alt="Scan to open customer display"
-                      style={{ width: "72px", height: "72px", background: "#fff", padding: "4px", borderRadius: "4px" }}
-                    />
-                  )}
-                  <p style={{ fontSize: "11px", color: "#888" }}>
-                    Customer display device should be pointed at: <strong>{displayUrl}</strong>
-                    <br />
-                    Changes on every app restart — re-scan this each time it does.
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* CHEQUE FIELDS — only when Cheque selected */}
@@ -836,34 +689,10 @@ function EditBooking() {
               </div>
             )}
 
-            {/* PAYMENT IN PROGRESS — QR is shown on the customer-facing display device */}
-            {showPayment && (
-              <div style={{
-                background: "#f0f9ff", border: "1px solid #0ea5e9", borderRadius: "8px",
-                padding: "14px 16px", margin: "10px 0", textAlign: "center",
-              }}>
-                <p style={{ fontWeight: 600, color: "#0369a1", marginBottom: "4px", fontSize: "14px" }}>
-                  Waiting for the customer to scan &amp; pay on the display screen...
-                </p>
-                <p style={{ fontSize: "12px", color: "#666", marginBottom: "10px" }}>
-                  Order ID: <strong>{pendingBookingId}</strong>
-                </p>
-                <button
-                  style={{
-                    fontSize: "12px", padding: "4px 14px", cursor: "pointer",
-                    border: "1px solid #94a3b8", borderRadius: "4px", background: "#fff",
-                  }}
-                  onClick={stopPaymentWait}
-                >
-                  Cancel Payment
-                </button>
-              </div>
-            )}
-
             <button
               className="primary-btn"
               onClick={handleSave}
-              disabled={saving || showPayment}
+              disabled={saving}
               style={{ marginTop: "4px" }}
             >
               {saving

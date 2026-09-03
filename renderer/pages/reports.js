@@ -443,7 +443,7 @@ const [selectedIds, setSelectedIds] = useState(new Set());
     bank:           item.bank       || item.paymentType || "",
     smarnarth:      item.smarnarth  || "",
     remainingAmount: item.remainingAmount || 0,
-    orderId:        item.orderId || item._id || "",
+    orderId:        item.orderId || "",
     chequeNumber:   item.chequeNumber || "",
     payingBankName: item.payingBankName || "",
     panCard:        item.panCard || "",

@@ -19,17 +19,15 @@ export default function BookingSuccess() {
   // polling /booking_by_order_id a second time in parallel).
   const { booking: resolvedBooking, receiptUrl, smsStatus, isGenerating, receiptTimedOut } = useReceiptPipelineStatus();
 
-  // Gate the success actions (Print / New Booking / View All) behind the
-  // receipt pipeline actually finishing for this booking — success (receiptUrl
-  // set), failure (isGenerating flips false as soon as the handler finishes,
-  // even if upload_receipt itself failed), or a hard timeout (see
-  // useReceiptPdfPipeline's RECEIPT_GENERATION_TIMEOUT_MS) if the handler
-  // never runs at all. Keying only off receiptUrl would leave staff stuck on
-  // this screen for the full timeout even when the pipeline had already
-  // failed and told us so seconds earlier.
   const resolvedBookingId = String(resolvedBooking?.bookingId || "");
   const isConfirmedBooking = !!resolvedBookingId && !resolvedBookingId.startsWith("SSMATH-");
-  const showReceiptGate = isConfirmedBooking && !receiptUrl && isGenerating && !receiptTimedOut;
+  // The booking itself is already done the moment this page loads — the PDF
+  // render/upload/SMS pipeline (see useReceiptPdfPipeline) is just follow-up
+  // work that can take several seconds (S3 upload in particular). Staff
+  // shouldn't be stuck staring at a loading screen for that; show the
+  // confirmation immediately and surface pipeline progress as a status line
+  // instead of a gate.
+  const showPipelineStatus = isConfirmedBooking && !receiptUrl && isGenerating && !receiptTimedOut;
 
   useEffect(() => {
     if (!rawId) return;
@@ -60,7 +58,7 @@ export default function BookingSuccess() {
           return;
         }
       } catch (e) {
-        console.error(`[booking-success-poll] orderId=${rawId} attempt=${attempts} elapsedMs=${elapsedMs} error:`, e);
+        console.warn(`[booking-success-poll] orderId=${rawId} attempt=${attempts} elapsedMs=${elapsedMs} error: ${e?.message || e}`);
       }
 
       if (attempts >= 40) { // ~60s at 1.5s interval — webhook confirmation can occasionally lag
@@ -99,96 +97,83 @@ export default function BookingSuccess() {
         <Header title="Booking Status" />
 
         <div className="success-card">
-          {showReceiptGate ? (
-            <>
-              {/* Receipt PDF still being generated — buttons stay hidden so
-                  staff can't print/move on before it's ready. */}
-              <div className="success-icon">🧾</div>
-              <h2 className="success-title">
-                <span>Generating Receipt…</span>
-                <span>पावती तयार होत आहे…</span>
-              </h2>
-              <p className="success-subtitle">
-                कृपया थांबा / Please wait a moment
-              </p>
-              <p className="receipt">
-                Receipt:<br />
-                <strong>{receiptId}</strong>
-              </p>
-            </>
-          ) : (
-            <>
-              {/* Success Icon */}
-              <div className="success-icon">✔</div>
+          {/* Success Icon */}
+          <div className="success-icon">✔</div>
 
-              {/* Title */}
-              <h2 className="success-title">
-                <span>Booking Confirmed!</span>
-                <span>बुकिंग पूर्ण!</span>
-              </h2>
+          {/* Title */}
+          <h2 className="success-title">
+            <span>Booking Confirmed!</span>
+            <span>बुकिंग पूर्ण!</span>
+          </h2>
 
-              {/* Subtitle */}
-              <p className="success-subtitle">
-                Your booking has been successfully created.
-              </p>
+          {/* Subtitle */}
+          <p className="success-subtitle">
+            Your booking has been successfully created.
+          </p>
 
-              {/* Name — shows smarnarth if filled, else name */}
-              {displayName && (
-                <p className="receipt">
-                  नाव / Name:<br />
-                  <strong>{displayName}</strong>
-                </p>
-              )}
-
-              {/* Receipt */}
-              <p className="receipt">
-                Receipt:<br />
-                <strong>{receiptId}</strong>
-              </p>
-
-              {isConfirmedBooking && receiptTimedOut && !receiptUrl && (
-                <p className="success-subtitle">
-                  ⚠️ Receipt generation is taking longer than usual — you can still print from here.
-                </p>
-              )}
-
-              {/* SMS status — the receipt PDF/link/SMS pipeline runs at the app
-                  level (see _app.js) via useReceiptPdfPipeline */}
-              {resolvedBooking?.sendSms && smsStatus && (
-                <p className="success-subtitle">
-                  {smsStatus === "sending" && "Sending receipt SMS…"}
-                  {smsStatus === "sent" && `✅ Receipt SMS sent to ${resolvedBooking.phone}`}
-                  {smsStatus === "failed" && "⚠️ Receipt SMS failed — you can copy the link from the Print Receipt page"}
-                </p>
-              )}
-
-              {/* Buttons */}
-              <div className="success-actions">
-                <button
-                  className="primary-btn success-print-btn"
-                  onClick={() => router.push("/receipt-print")}
-                >
-                  पावती प्रिंट / Print Receipt
-                </button>
-
-                <div className="success-secondary-row">
-                  <button
-                    className="secondary-btn"
-                    onClick={() => router.push("/new-booking")}
-                  >
-                    नवीन बुकिंग / New Booking
-                  </button>
-
-                  <button
-                    className="secondary-btn"
-                    onClick={() => router.push("/all-bookings")}
-                  >
-                    सर्व पहा / View All
-                  </button>
-                </div>
-              </div>
-            </>
+          {/* Name — shows smarnarth if filled, else name */}
+          {displayName && (
+            <p className="receipt">
+              नाव / Name:<br />
+              <strong>{displayName}</strong>
+            </p>
           )}
+
+          {/* Receipt */}
+          <p className="receipt">
+            Receipt:<br />
+            <strong>{receiptId}</strong>
+          </p>
+
+          {/* Receipt pipeline status — non-blocking, updates in place as the
+              PDF renders/uploads and (if requested) the SMS sends. */}
+          {showPipelineStatus && (
+            <p className="success-subtitle">
+              पावती तयार होत आहे… / Generating receipt…
+            </p>
+          )}
+
+          {isConfirmedBooking && receiptTimedOut && !receiptUrl && (
+            <p className="success-subtitle">
+              ⚠️ Receipt generation is taking longer than usual — you can still print from here.
+            </p>
+          )}
+
+          {/* SMS status — the receipt PDF/link/SMS pipeline runs at the app
+              level (see _app.js) via useReceiptPdfPipeline */}
+          {resolvedBooking?.sendSms && smsStatus && (
+            <p className="success-subtitle">
+              {smsStatus === "sending" && "Sending receipt SMS…"}
+              {smsStatus === "sent" && `✅ Receipt SMS sent to ${resolvedBooking.phone}`}
+              {smsStatus === "failed" && "⚠️ Receipt SMS failed — you can copy the link from the Print Receipt page"}
+            </p>
+          )}
+
+          {/* Buttons */}
+          <div className="success-actions">
+            <button
+              className="primary-btn success-print-btn"
+              onClick={() => router.push("/receipt-print")}
+            >
+              पावती प्रिंट / Print Receipt
+            </button>
+
+            <div className="success-secondary-row">
+              <button
+                className="secondary-btn"
+                onClick={() => router.push("/new-booking")}
+              >
+                नवीन बुकिंग / New Booking
+              </button>
+
+              <button
+                className="secondary-btn"
+                onClick={() => router.push("/all-bookings")}
+              >
+                सर्व पहा / View All
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

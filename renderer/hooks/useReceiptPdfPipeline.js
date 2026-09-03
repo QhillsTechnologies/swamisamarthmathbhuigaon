@@ -100,11 +100,16 @@ export function useReceiptPdfPipeline(booking) {
             });
             console.log(`[receiptPipeline] /save_receipt_urls response (${since()}):`, saveResponse);
           } catch (saveErr) {
-            console.error(`[receiptPipeline] Save receipt URLs error (${since()}):`, saveErr);
+            // console.warn, not console.error — this is a handled, non-fatal
+            // failure (SMS still sends; only the DB-saved receipt URL is
+            // missing) and Next's dev overlay promotes any console.error(Error)
+            // to a full-screen crash, which is misleading for something the
+            // app already recovered from.
+            console.warn(`[receiptPipeline] Save receipt URLs error (${since()}): ${saveErr?.message || saveErr}`);
           }
         }
       } catch (err) {
-        console.error(`[receiptPipeline] Receipt upload error (${since()}):`, err);
+        console.warn(`[receiptPipeline] Receipt upload error (${since()}): ${err?.message || err}`);
       }
 
       if (currentBooking?.sendSms && currentBooking?.phone) {
@@ -112,9 +117,11 @@ export function useReceiptPdfPipeline(booking) {
           setSmsStatus("sending");
           console.log(`[receiptPipeline] sending SMS (${since()})`);
           const amount = currentBooking.paidAmount ?? currentBooking.advance ?? currentBooking.amount ?? 0;
-          // Bare code, not shortUrl — the DLT template already supplies the
-          // "https://www.../?" prefix around the {#urg#} variable.
-          await sendReceiptSms({ phone: currentBooking.phone, name: currentBooking.name, amount, receiptUrl: shortCode });
+          // The live SMS template's fixed text already ends in ".../receipts/"
+          // (see send_receipt_sms.web.js) — it just needs the uploaded PDF's
+          // filename appended, not the ShortLinks code.
+          const fileName = uploadedUrl ? uploadedUrl.split("/").pop() : "";
+          await sendReceiptSms({ phone: currentBooking.phone, name: currentBooking.name, amount, fileName });
           setSmsStatus("sent");
           console.log(`[receiptPipeline] SMS sent (${since()}) — total pipeline time from trigger to SMS sent`);
         } catch (smsErr) {

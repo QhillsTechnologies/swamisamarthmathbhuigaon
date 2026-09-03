@@ -70,7 +70,7 @@ export default function ReceiptPrint() {
           return;
         }
       } catch (err) {
-        console.error("Poll receipt URLs error:", err);
+        console.warn(`Poll receipt URLs error: ${err?.message || err}`);
       }
       attempts += 1;
       if (attempts < maxAttempts) {
@@ -176,7 +176,7 @@ export default function ReceiptPrint() {
   const paidAmt      = booking.paidAmount ?? booking.advance ?? booking.amount ?? 0;
   const remaining    = Number(booking.remainingAmount || 0);
   const smarnarth    = booking.smarnarth || "";
-  const orderId      = booking.orderId || booking._id || "";
+  const orderId      = booking.orderId || "";
   const is80G        = !!booking.is80G;
   const panCard      = booking.panCard || "";
   const isPendingConfirmation = String(booking.bookingId || "").startsWith("SSMATH-");

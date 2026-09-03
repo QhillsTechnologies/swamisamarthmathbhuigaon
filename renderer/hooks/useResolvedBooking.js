@@ -50,7 +50,7 @@ export function useResolvedBooking() {
           return;
         }
       } catch (err) {
-        console.error(`[resolve-booking-poll] orderId=${parsed.bookingId} attempt=${attempts} elapsedMs=${elapsedMs} error:`, err);
+        console.warn(`[resolve-booking-poll] orderId=${parsed.bookingId} attempt=${attempts} elapsedMs=${elapsedMs} error: ${err?.message || err}`);
       }
       if (attempts < maxAttempts) {
         setTimeout(poll, 1500);
