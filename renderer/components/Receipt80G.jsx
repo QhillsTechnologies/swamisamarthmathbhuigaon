@@ -113,7 +113,7 @@ function ReceiptCard({ item, guides }) {
       <div className={`${styles.field} ${styles["r-name"]}`}>{item.name || ""}</div>
       <div className={`${styles.field} ${styles["r-address"]}`}>{item.address || ""}</div>
       <div className={`${styles.field} ${styles["r-updatedby"]}`}>
-        {item.smarnarth ? `Late ${item.smarnarth} यांचे स्मरणार्थ` : ""}
+        {item.smarnarth || ""}
       </div>
       <div className={`${styles.field} ${styles["r-phone"]}`}>{item.phone || ""}</div>
       <div className={`${styles.field} ${styles["r-purpose"]}`}>{buildPurposeWithDate(item)}</div>

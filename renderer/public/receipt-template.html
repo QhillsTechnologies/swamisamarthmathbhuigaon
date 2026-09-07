@@ -225,7 +225,7 @@
           '<div class="field r-date">'        + dateStr                + '</div>' +
           '<div class="field r-name">'        + (item.name      || "") + '</div>' +
           '<div class="field r-address">'     + (item.address   || "") + '</div>' +
-          '<div class="field r-updatedby">' + (item.smarnarth ? "Late " + item.smarnarth + " यांचे स्मरणार्थ" : "") + '</div>' +
+          '<div class="field r-updatedby">' + (item.smarnarth || "") + '</div>' +
           '<div class="field r-phone">'       + (item.phone     || "") + '</div>' +
           '<div class="field r-purpose">'     + purposeWithDate         + '</div>' +
           '<div class="field r-amountwords">' + amountWords             + '</div>' +

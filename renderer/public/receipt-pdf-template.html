@@ -67,7 +67,7 @@
      same runtime "shift" applied as #bg-bottom itself — base tops below are
      exactly as originally measured against the unshifted background. */
 
-  /* "Late X यांचे स्मरणार्थ" — sits below the address, same row as the phone
+  /* Smarnarth name — sits below the address, same row as the phone
      number (left side; #mb is right-aligned so the two never collide). */
   #sm{top:564px;left:220px;width:1000px;font-size:30px;font-style:italic;}
   #mb{top:564px;left:1250px;width:390px;font-size:32px;}
@@ -220,11 +220,10 @@ async function renderAndSendPdf(d) {
   document.getElementById('dt').textContent = formatDateDMY(d._createdDate);
   document.getElementById('nm').textContent = d.name || '';
   document.getElementById('ad').textContent = d.address || '';
-  // Memorial line — shown below the address, same as receipt-template.html's
-  // r-updatedby field, alongside (not instead of) the name above.
-  document.getElementById('sm').textContent = d.smarnarth
-    ? ('Late ' + d.smarnarth + ' यांचे स्मरणार्थ')
-    : '';
+  // Smarnarth line — printed verbatim below the address, same as
+  // receipt-template.html's r-updatedby field, alongside (not instead of) the
+  // name above.
+  document.getElementById('sm').textContent = d.smarnarth || '';
   document.getElementById('mb').textContent = d.phone || '';
   // bookingDate (event/seva date) appended in brackets after the purpose —
   // same convention as receipt-template.html and Receipt80G.

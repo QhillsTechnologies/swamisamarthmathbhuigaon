@@ -131,7 +131,7 @@ export default function DevoteeForm() {
 
       <input
         className="input"
-        placeholder="स्मरणार्थ / Smarnarth"
+        placeholder="To"
         value={form.smarnarth}
         onChange={(e) => updateForm("smarnarth", e.target.value)}
       />
