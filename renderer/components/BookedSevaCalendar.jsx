@@ -42,12 +42,22 @@ const getBookingDateKeys = (b) => {
 /* ==========================================
    BOOKED SEVA CALENDAR — button + modal
 ========================================== */
+const PAGE_SIZE = 5;
+
 export default function BookedSevaCalendar({ buttonClassName = "secondary-btn" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [activeDateKey, setActiveDateKey] = useState(null); // hovered OR clicked date
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Switching dates should always start collapsed again — otherwise "Show
+  // more" clicked on one busy date would leave every date after it expanded.
+  const selectDate = useCallback((key) => {
+    setActiveDateKey(key);
+    setVisibleCount(PAGE_SIZE);
+  }, []);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -86,10 +96,13 @@ export default function BookedSevaCalendar({ buttonClassName = "secondary-btn" }
   );
 
   const activeBookings = activeDateKey ? bookingsByDate[activeDateKey] || [] : [];
+  const visibleBookings = activeBookings.slice(0, visibleCount);
+  const remainingCount = activeBookings.length - visibleBookings.length;
 
   const handleClose = () => {
     setIsOpen(false);
     setActiveDateKey(null);
+    setVisibleCount(PAGE_SIZE);
   };
 
   return (
@@ -126,7 +139,7 @@ export default function BookedSevaCalendar({ buttonClassName = "secondary-btn" }
                     <DatePicker
                       inline
                       selected={activeDateKey ? safeDate(activeDateKey) : null}
-                      onChange={(date) => setActiveDateKey(date ? toDBDate(date) : null)}
+                      onChange={(date) => selectDate(date ? toDBDate(date) : null)}
                       calendarClassName="pd-calendar bsc-calendar"
                       highlightDates={
                         bookedDates.length > 0
@@ -139,7 +152,7 @@ export default function BookedSevaCalendar({ buttonClassName = "secondary-btn" }
                         return (
                           <span
                             title={count > 0 ? `${count} booking${count > 1 ? "s" : ""}` : ""}
-                            onMouseEnter={() => count > 0 && setActiveDateKey(key)}
+                            onMouseEnter={() => count > 0 && selectDate(key)}
                             style={{ display: "block", width: "100%", height: "100%" }}
                           >
                             {day}
@@ -162,18 +175,29 @@ export default function BookedSevaCalendar({ buttonClassName = "secondary-btn" }
                         {activeBookings.length === 0 ? (
                           <div className="bsc-details-empty">या तारखेला बुकिंग नाही / No bookings on this date</div>
                         ) : (
-                          <ul className="bsc-booking-list">
-                            {activeBookings.map((b, i) => (
-                              <li key={b._id || b.id || i} className="bsc-booking-item">
-                                <div className="bsc-booking-name">{b.name || "—"}</div>
-                                <div className="bsc-booking-purpose">
-                                  {b.purpose || "—"}
-                                  {b.subPurpose ? ` (${b.subPurpose})` : ""}
-                                </div>
-                                {b.phone && <div className="bsc-booking-phone">📞 {b.phone}</div>}
-                              </li>
-                            ))}
-                          </ul>
+                          <>
+                            <ul className="bsc-booking-list">
+                              {visibleBookings.map((b, i) => (
+                                <li key={b._id || b.id || i} className="bsc-booking-item">
+                                  <div className="bsc-booking-name">{b.name || "—"}</div>
+                                  <div className="bsc-booking-purpose">
+                                    {b.purpose || "—"}
+                                    {b.subPurpose ? ` (${b.subPurpose})` : ""}
+                                  </div>
+                                  {b.phone && <div className="bsc-booking-phone">📞 {b.phone}</div>}
+                                </li>
+                              ))}
+                            </ul>
+                            {remainingCount > 0 && (
+                              <button
+                                type="button"
+                                className="bsc-showmore-btn"
+                                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                              >
+                                आणखी पहा / Show More ({remainingCount})
+                              </button>
+                            )}
+                          </>
                         )}
                       </>
                     )}
