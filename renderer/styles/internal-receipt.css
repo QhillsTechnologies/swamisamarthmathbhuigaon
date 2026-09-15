@@ -196,7 +196,8 @@
 }
 
 /* BACK BUTTON — inline in card header (not full-width like .ir-internal-actions) */
-.tr-card-header .secondary-btn {
+.tr-card-header .secondary-btn,
+.ir-card-header .secondary-btn {
   flex: 0 0 auto;
   width: auto;
   height: 36px;

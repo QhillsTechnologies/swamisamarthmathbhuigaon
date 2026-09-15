@@ -594,3 +594,177 @@
 .react-datepicker__day--abhishek-booked {
   text-decoration: line-through;
 }
+
+/* ============================================
+   BOOKED SEVA CALENDAR — modal
+============================================ */
+.bsc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 20, 10, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.bsc-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.bsc-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 2px solid #fdf0e4;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  border-radius: 16px 16px 0 0;
+}
+
+.bsc-modal-title {
+  margin: 0 0 3px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #7c2d12;
+}
+
+.bsc-modal-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: #a07850;
+  font-weight: 500;
+}
+
+.bsc-close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #a07850;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.bsc-close-btn:hover {
+  background: #fff;
+  color: #c2410c;
+}
+
+.bsc-modal-body {
+  padding: 20px 22px 24px;
+}
+
+.bsc-loading,
+.bsc-error {
+  text-align: center;
+  padding: 24px;
+  color: #a07850;
+  font-size: 14px;
+}
+
+.bsc-error {
+  color: #dc2626;
+}
+
+.bsc-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.bsc-calendar-wrap {
+  flex: 0 0 auto;
+}
+
+.bsc-calendar .react-datepicker {
+  width: 100%;
+}
+
+.bsc-details {
+  flex: 1;
+  min-width: 200px;
+  border: 1.5px solid #e8ddd2;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fffcf8;
+}
+
+.bsc-details-empty {
+  color: #a07850;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.bsc-details-date {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c2d12;
+  border-bottom: 1px solid #f0ece6;
+  padding-bottom: 8px;
+}
+
+.bsc-booking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bsc-booking-item {
+  border: 1px solid #f0ece6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
+.bsc-booking-name {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #374151;
+}
+
+.bsc-booking-purpose {
+  font-size: 12.5px;
+  color: #c2410c;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.bsc-booking-phone {
+  font-size: 12px;
+  color: #a07850;
+  margin-top: 4px;
+}
+
+/* Blue highlight for dates that have bookings */
+.bsc-day--booked {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-radius: 50% !important;
+  font-weight: 700 !important;
+  border: 2px solid #3b82f6 !important;
+}
+
+.bsc-day--booked:hover {
+  background: #93c5fd !important;
+  color: #1e3a8a !important;
+}
+
+@media (max-width: 480px) {
+  .bsc-content {
+    flex-direction: column;
+  }
+}

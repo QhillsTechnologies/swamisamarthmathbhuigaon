@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import DevoteeForm from "../components/DevoteeForm";
 import PurposeDropdown from "../components/PurposeDropdown";
+import BookedSevaCalendar from "../components/BookedSevaCalendar";
 import apiRequest from "../services/api";
 
 export default function InternalReceipt() {
@@ -191,9 +192,14 @@ export default function InternalReceipt() {
         {/* PURPOSE & BOOKING DETAILS CARD */}
         <div className="ir-card">
           <div className="ir-card-header">
-            <div>
-              <p className="ir-card-title">उद्देश आणि तारीख / Purpose & Date</p>
-              <p className="ir-card-subtitle">Select purpose, payment type and booking date</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+              <div>
+                <p className="ir-card-title">उद्देश आणि तारीख / Purpose & Date</p>
+                <p className="ir-card-subtitle">Select purpose, payment type and booking date</p>
+              </div>
+              <div style={{ marginLeft: "auto" }}>
+                <BookedSevaCalendar />
+              </div>
             </div>
           </div>
           <div className="ir-card-body">

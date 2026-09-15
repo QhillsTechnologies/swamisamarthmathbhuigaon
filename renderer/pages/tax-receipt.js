@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import DevoteeForm from "../components/DevoteeForm";
 import PurposeDropdown from "../components/PurposeDropdown";
+import BookedSevaCalendar from "../components/BookedSevaCalendar";
 import apiRequest from "../services/api";
 
 /* Bank options — no Cash */
@@ -329,9 +330,14 @@ export default function TaxReceipt() {
         {/* PURPOSE CARD */}
         <div className="tr-card">
           <div className="tr-card-header">
-            <div>
-              <p className="tr-card-title">उद्देश आणि तारीख / Purpose & Date</p>
-              <p className="tr-card-subtitle">Select purpose, payment type and booking date</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+              <div>
+                <p className="tr-card-title">उद्देश आणि तारीख / Purpose & Date</p>
+                <p className="tr-card-subtitle">Select purpose, payment type and booking date</p>
+              </div>
+              <div style={{ marginLeft: "auto" }}>
+                <BookedSevaCalendar />
+              </div>
             </div>
           </div>
           <div className="tr-card-body">
