@@ -27,8 +27,16 @@
 .r-address    { left: 2.8cm;  top: 6.00cm;  width: 18.3cm; height: 1.7cm; font-size: 12pt; font-weight: bold; }
 .r-phone      { left: 15.2cm; top: 7.00cm;  width: 5.4cm;  height: 0.6cm; font-size: 13pt; font-weight: bold; }
 
-/* Name of whoever updated the record in CMS -> printed just below the address block */
-.r-updatedby  { left: 1.0cm;  top: 7.00cm;  width: 6.0cm;  height: 0.4cm; font-size: 11pt; font-style: italic; }
+/* Smarnarth line ("Late X yanche smarnarth ...") -> printed just below the
+   address block. Devotees can type a long dedication here, so this needs
+   room to wrap onto a 2nd line without running into the सेवा प्रत्यर्थ row
+   at top 8.00cm (pre-printed on the physical pavati, so it can't move):
+   width widened to stop short of the phone number column (left 15.2cm)
+   instead of the original 6.0cm, height/line-height tuned so two wrapped
+   lines from top 7.00cm still land safely above 8.00cm, and
+   overflow:hidden clips the rare 3rd line rather than letting it bleed
+   into that next row. */
+.r-updatedby  { left: 1.0cm;  top: 7.00cm;  width: 13.5cm;  height: 0.85cm; font-size: 11pt; font-style: italic; line-height: 1.05; overflow: hidden; }
 
 /* "सेवा प्रत्यर्थ अक्षरी" slot -> mapped to item.purpose, with bookingDate
    appended in brackets, e.g. "देणगी (16-07-2026)" */

@@ -68,8 +68,17 @@
      exactly as originally measured against the unshifted background. */
 
   /* Smarnarth name — sits below the address, same row as the phone
-     number (left side; #mb is right-aligned so the two never collide). */
-  #sm{top:564px;left:220px;width:1000px;font-size:30px;font-style:italic;}
+     number (left side; #mb is right-aligned so the two never collide).
+     Allowed to wrap (like #ad) instead of truncating with an ellipsis —
+     everything below it (the #bg-bottom labels included) shifts down at
+     runtime to match however many lines it actually takes, same mechanism
+     as the address shift below. Its single-line-and-a-bit budget before
+     that extra shift kicks in is the natural 90px gap to #pu below it —
+     see SM_LINE_BUDGET in the script. */
+  #sm{
+    top:564px;left:220px;width:1000px;font-size:30px;font-style:italic;
+    white-space:normal;line-height:1.2;overflow:visible;text-overflow:unset;height:auto;
+  }
   #mb{top:564px;left:1250px;width:390px;font-size:32px;}
   /* line-height bumped from the base .f value of 1 — Devanagari matras/
      conjuncts (े, ि, क्का, etc.) extend above a font-size-tight line box and
@@ -196,6 +205,13 @@ const PDF_W_CM = 18.5, PDF_H_CM = 13.17;
 // Single-line address budget in 2x-canvas px — lines up with the #bg-bottom
 // slice boundary (#ad top 500 + 44 = 544). Must match #ad's font-size/line-height.
 const AD_LINE_BUDGET = 44;
+// Smarnarth's budget before ITS overflow needs its own extra shift — the
+// natural gap between the sm/mb row (top 564) and #pu below it (top 654).
+// #sm/#mb sit still at just the address shift; everything from #pu down
+// (and #bg-bottom, whose baked-in labels start at that row) gets this
+// extra shift stacked on top of it.
+const SM_LINE_BUDGET = 90;
+const SM_ROW_IDS = ['sm', 'mb'];
 
 window.onmessage = async (e) => {
   const d = e.data;
@@ -278,15 +294,26 @@ async function renderAndSendPdf(d) {
   const adEl = document.getElementById('ad');
   const shift = Math.max(0, adEl.offsetHeight - AD_LINE_BUDGET);
 
+  // Smarnarth (a devotee-typed "Late X yanche smarnarth" line) can run long
+  // too — same idea, but stacked below the address shift: #sm/#mb only move
+  // down by the address shift (they're the row causing this extra shift),
+  // everything below them moves by both, so a long smarnarth line pushes
+  // itself onto a second line instead of running into the "उद्देश" row
+  // underneath it.
+  const smEl = document.getElementById('sm');
+  const smShift = Math.max(0, smEl.offsetHeight - SM_LINE_BUDGET);
+  const totalShift = shift + smShift;
+
   Object.keys(BASE_TOP).forEach((id) => {
     const extra = id === 'chq' ? PAN_EXTRA : id === 'rem' ? PAN_EXTRA + CHQ_EXTRA : 0;
-    document.getElementById(id).style.top = (BASE_TOP[id] + shift + extra) + 'px';
+    const rowShift = SM_ROW_IDS.includes(id) ? shift : totalShift;
+    document.getElementById(id).style.top = (BASE_TOP[id] + rowShift + extra) + 'px';
   });
-  document.getElementById('border-fill-l').style.height = shift + 'px';
-  document.getElementById('border-fill-r').style.height = shift + 'px';
+  document.getElementById('border-fill-l').style.height = totalShift + 'px';
+  document.getElementById('border-fill-r').style.height = totalShift + 'px';
 
   const rEl = document.getElementById('r');
-  const canvasHeight = CANVAS_H + shift;
+  const canvasHeight = CANVAS_H + totalShift;
   rEl.style.height = canvasHeight + 'px';
 
   await new Promise(r => setTimeout(r, 300));
