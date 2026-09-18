@@ -784,6 +784,48 @@
   color: #1e3a8a !important;
 }
 
+/* react-datepicker keeps an internal "keyboard focus" date that shifts
+   month-to-month keeping the same day number (e.g. always the 18th) even
+   though nothing was actually clicked — it inherits .pd-calendar's orange
+   "selected" styling and looks like a real (wrong) highlight. Neutralize
+   it here so only actually-booked dates (.bsc-day--booked) stand out. */
+.bsc-calendar .react-datepicker__day--keyboard-selected {
+  background: transparent !important;
+  color: inherit !important;
+  border-radius: 0 !important;
+  font-weight: 400 !important;
+  border: none !important;
+}
+
+.bsc-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 2px 0 16px;
+  padding: 10px 14px;
+  background: #fffcf8;
+  border: 1.5px solid #e8ddd2;
+  border-radius: 12px;
+}
+
+.bsc-filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c2d12;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bsc-filter-checkbox input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #f97316;
+  cursor: pointer;
+}
+
 @media (max-width: 480px) {
   .bsc-content {
     flex-direction: column;

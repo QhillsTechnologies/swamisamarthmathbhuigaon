@@ -44,13 +44,29 @@ const getBookingDateKeys = (b) => {
 ========================================== */
 const PAGE_SIZE = 5;
 
+/* Purpose filter checkboxes. "All" wins over the others whenever it is
+   checked; otherwise the calendar shows the union of the checked purposes. */
+const PURPOSE_FILTERS = [
+  { key: "sanyukt", label: "संयुक्त महाप्रसाद", match: "संयुक्त महाप्रसाद" },
+  { key: "sampurna", label: "संपूर्ण महाप्रसाद", match: "संपूर्ण महाप्रसाद" },
+];
+
+const bookingMatchesPurpose = (b, needle) =>
+  (b.purpose || "").includes(needle) || (b.subPurpose || "").includes(needle);
+
+// Module-level cache so re-opening the modal in the same session shows data
+// instantly instead of re-waiting on the full /Bookings fetch every time.
+let bookingsCache = null;
+
 export default function BookedSevaCalendar({ buttonClassName = "secondary-btn" }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [bookings, setBookings] = useState([]);
+  const [bookings, setBookings] = useState(() => bookingsCache || []);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [activeDateKey, setActiveDateKey] = useState(null); // hovered OR clicked date
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [filterAll, setFilterAll] = useState(true);
+  const [filterChecked, setFilterChecked] = useState({ sanyukt: false, sampurna: false });
 
   // Switching dates should always start collapsed again — otherwise "Show
   // more" clicked on one busy date would leave every date after it expanded.
@@ -59,36 +75,65 @@ export default function BookedSevaCalendar({ buttonClassName = "secondary-btn" }
     setVisibleCount(PAGE_SIZE);
   }, []);
 
-  const fetchBookings = useCallback(async () => {
-    setLoading(true);
-    setFetchError("");
+  const fetchBookings = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setFetchError("");
+    }
     try {
       const data = await apiRequest("/Bookings");
       const list = Array.isArray(data) ? data : data.bookings || [];
-      setBookings(list.filter((b) => (b.status || "").toLowerCase() !== "cancelled"));
+      const active = list.filter((b) => (b.status || "").toLowerCase() !== "cancelled");
+      bookingsCache = active;
+      setBookings(active);
     } catch (err) {
-      setFetchError(err.message || "Failed to load booked sevas");
-      setBookings([]);
+      if (!silent) {
+        setFetchError(err.message || "Failed to load booked sevas");
+        setBookings([]);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isOpen) fetchBookings();
+    if (!isOpen) return;
+    if (bookingsCache) {
+      // Show the cached list immediately, then quietly refresh in the background.
+      setBookings(bookingsCache);
+      fetchBookings({ silent: true });
+    } else {
+      fetchBookings();
+    }
   }, [isOpen, fetchBookings]);
+
+  // Reset the selected date whenever the purpose filter changes so the
+  // details panel never keeps showing a date that no longer matches.
+  useEffect(() => {
+    setActiveDateKey(null);
+    setVisibleCount(PAGE_SIZE);
+  }, [filterAll, filterChecked]);
+
+  const activePurposeKeys = PURPOSE_FILTERS.filter((f) => filterChecked[f.key]).map((f) => f.match);
+
+  /* Purpose-filtered bookings that actually drive the calendar/list. */
+  const filteredBookings = useMemo(() => {
+    if (filterAll) return bookings;
+    if (activePurposeKeys.length === 0) return [];
+    return bookings.filter((b) => activePurposeKeys.some((p) => bookingMatchesPurpose(b, p)));
+  }, [bookings, filterAll, filterChecked]);
 
   /* dateKey -> bookings on that date */
   const bookingsByDate = useMemo(() => {
     const map = {};
-    bookings.forEach((b) => {
+    filteredBookings.forEach((b) => {
       getBookingDateKeys(b).forEach((key) => {
         if (!map[key]) map[key] = [];
         map[key].push(b);
       });
     });
     return map;
-  }, [bookings]);
+  }, [filteredBookings]);
 
   const bookedDates = useMemo(
     () => Object.keys(bookingsByDate).map(safeDate).filter(Boolean),
@@ -129,6 +174,29 @@ export default function BookedSevaCalendar({ buttonClassName = "secondary-btn" }
             </div>
 
             <div className="bsc-modal-body">
+              <div className="bsc-filters">
+                <label className="bsc-filter-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={filterAll}
+                    onChange={(e) => setFilterAll(e.target.checked)}
+                  />
+                  सर्व / All
+                </label>
+                {PURPOSE_FILTERS.map((f) => (
+                  <label key={f.key} className="bsc-filter-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={filterChecked[f.key]}
+                      onChange={(e) =>
+                        setFilterChecked((prev) => ({ ...prev, [f.key]: e.target.checked }))
+                      }
+                    />
+                    {f.label}
+                  </label>
+                ))}
+              </div>
+
               {loading ? (
                 <div className="bsc-loading">Loading bookings...</div>
               ) : fetchError ? (
