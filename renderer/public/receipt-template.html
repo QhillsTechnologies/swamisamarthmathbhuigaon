@@ -85,8 +85,13 @@
      instead of the original 6.0cm, height/line-height/font-size tuned so
      two wrapped lines from top 7.10cm still land safely above 8.00cm, and
      overflow:hidden clips the rare 3rd line rather than letting it bleed
-     into that next row. */
-  .r-updatedby  { left: 2.0cm;  top: 7.10cm;  width: 12.8cm;  height: 0.85cm; font-size: 10.5pt; font-style: italic; line-height: 1.05; overflow: hidden; }
+     into that next row. padding-top reserves headroom for Devanagari
+     matras/conjuncts (े, ि, क्का, etc.), which extend above the line box —
+     without it, overflow:hidden was clipping their tops flush against the
+     box's own top edge, since text sits right at top:0 of its box by
+     default. box-sizing:border-box (set globally above) keeps the padding
+     inside the existing 0.85cm footprint instead of growing it. */
+  .r-updatedby  { left: 2.0cm;  top: 7.10cm;  width: 12.8cm;  height: 0.85cm; padding-top: 0.09cm; font-size: 10.5pt; font-style: italic; line-height: 1.25; overflow: hidden; }
 
   /* "सेवा प्रत्यर्थ अक्षरी" slot -> mapped to item.purpose, with bookingDate
      appended in brackets, e.g. "देणगी (16-07-2026)" */
@@ -243,12 +248,31 @@
           '<div class="field r-bank">'        + (item.bank      || "") + '</div>' +
           '<div class="field r-amount">'      + amount                  + '</div>' ;
         list.appendChild(card);
+        shrinkToFit(card.querySelector(".r-updatedby"));
       });
 
     } catch (e) {
       console.error("iframe error:", e);
     }
   });
+
+  // The स्मरणार्थ/"To" line sits in a fixed-height box (overflow:hidden) —
+  // the row below it is pre-printed on the physical pavati and can't be
+  // pushed down, so a long dedication can't wrap onto a 3rd+ line like the
+  // address field does. Shrinking the font until it fits keeps the whole
+  // text readable instead of silently clipping the overflow away.
+  function shrinkToFit(el, minPx) {
+    if (!el || !el.textContent) return;
+    minPx = minPx || 9;
+    var guard = 0;
+    while (el.scrollHeight > el.clientHeight + 1 && guard < 20) {
+      var cur = parseFloat(getComputedStyle(el).fontSize);
+      var next = cur - 1;
+      if (next < minPx) break;
+      el.style.fontSize = next + "px";
+      guard++;
+    }
+  }
 
   // Formats a date value (timestamp, ISO string, or Date) as DD-MM-YYYY
   function formatDateDMY(value) {

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import styles from "../styles/Receipt80G.module.css";
 
 /* Marathi number-to-words (Indian numbering system, up to crores) —
@@ -67,6 +68,23 @@ function buildPurposeWithDate(item) {
   return (item.purpose || "") + (bookingDateStr ? ` (${bookingDateStr})` : "");
 }
 
+// The स्मरणार्थ/"To" line sits in a fixed-height box (overflow:hidden) —
+// the row below it is pre-printed on the physical pavati and can't be
+// pushed down, so a long dedication can't wrap onto a 3rd+ line like the
+// address field does. Shrinking the font until it fits keeps the whole
+// text readable instead of silently clipping the overflow away.
+function shrinkToFit(el, minPx = 9) {
+  if (!el || !el.textContent) return;
+  let guard = 0;
+  while (el.scrollHeight > el.clientHeight + 1 && guard < 20) {
+    const cur = parseFloat(getComputedStyle(el).fontSize);
+    const next = cur - 1;
+    if (next < minPx) break;
+    el.style.fontSize = `${next}px`;
+    guard++;
+  }
+}
+
 function buildAmountWords(item) {
   if (item.amountInWords) return item.amountInWords;
   return item.advance ? `${numberToWordsMarathi(item.advance)} रुपये फक्त` : "";
@@ -106,13 +124,21 @@ function ReceiptCard({ item, guides }) {
     ? `${styles["receipt-card"]} ${styles.guides}`
     : styles["receipt-card"];
 
+  const smarnarthRef = useRef(null);
+  useEffect(() => {
+    const el = smarnarthRef.current;
+    if (!el) return;
+    el.style.fontSize = ""; // reset to the CSS default before re-measuring
+    shrinkToFit(el);
+  }, [item.smarnarth]);
+
   return (
     <div className={cardClass}>
       <div className={`${styles.field} ${styles["r-bookingid"]}`}>{item.bookingId || ""}</div>
       <div className={`${styles.field} ${styles["r-date"]}`}>{dateStr}</div>
       <div className={`${styles.field} ${styles["r-name"]}`}>{item.name || ""}</div>
       <div className={`${styles.field} ${styles["r-address"]}`}>{item.address || ""}</div>
-      <div className={`${styles.field} ${styles["r-updatedby"]}`}>
+      <div ref={smarnarthRef} className={`${styles.field} ${styles["r-updatedby"]}`}>
         {item.smarnarth || ""}
       </div>
       <div className={`${styles.field} ${styles["r-phone"]}`}>{item.phone || ""}</div>

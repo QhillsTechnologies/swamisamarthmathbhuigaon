@@ -78,6 +78,11 @@
   #sm{
     top:564px;left:220px;width:1000px;font-size:30px;font-style:italic;
     white-space:normal;line-height:1.2;overflow:visible;text-overflow:unset;height:auto;
+    /* A long dedication with no natural word-break (e.g. a single long
+       compound name) would otherwise overflow the box's right edge and run
+       into #mb (phone number) sitting on the same row — force a break
+       instead so it wraps to the next line like everything else here. */
+    overflow-wrap:anywhere;
   }
   #mb{top:564px;left:1250px;width:390px;font-size:32px;}
   /* line-height bumped from the base .f value of 1 — Devanagari matras/

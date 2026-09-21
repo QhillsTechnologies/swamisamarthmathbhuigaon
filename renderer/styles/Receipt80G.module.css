@@ -35,8 +35,13 @@
    instead of the original 6.0cm, height/line-height tuned so two wrapped
    lines from top 7.00cm still land safely above 8.00cm, and
    overflow:hidden clips the rare 3rd line rather than letting it bleed
-   into that next row. */
-.r-updatedby  { left: 1.0cm;  top: 7.00cm;  width: 13.5cm;  height: 0.85cm; font-size: 11pt; font-style: italic; line-height: 1.05; overflow: hidden; }
+   into that next row. padding-top reserves headroom for Devanagari
+   matras/conjuncts (े, ि, क्का, etc.), which extend above the line box —
+   without it, overflow:hidden was clipping their tops flush against the
+   box's own top edge, since text sits right at top:0 of its box by
+   default. box-sizing:border-box keeps the padding inside the existing
+   0.85cm footprint instead of growing it. */
+.r-updatedby  { left: 1.0cm;  top: 7.00cm;  width: 13.5cm;  height: 0.85cm; box-sizing: border-box; padding-top: 0.09cm; font-size: 11pt; font-style: italic; line-height: 1.25; overflow: hidden; }
 
 /* "सेवा प्रत्यर्थ अक्षरी" slot -> mapped to item.purpose, with bookingDate
    appended in brackets, e.g. "देणगी (16-07-2026)" */
