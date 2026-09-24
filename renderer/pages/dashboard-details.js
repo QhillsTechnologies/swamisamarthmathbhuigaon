@@ -67,7 +67,7 @@ function DashboardDetails() {
 
           /* ======================================
              TOTAL REVENUE
-             Only approved bookings
+             Approved + Pending (excludes only Cancelled)
           ====================================== */
           case "revenue":
             filtered = allBookings.filter(
@@ -79,9 +79,10 @@ function DashboardDetails() {
                   .trim();
 
                 return (
-                  status === "approved" &&
+                  status !== "cancelled" &&
                   Number(
                       booking.paidAmount ||
+                      booking.advance ||
                       0
                   ) > 0
                 );

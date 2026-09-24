@@ -35,10 +35,10 @@ function Dashboard() {
         const bookingsResponse = await apiRequest("/Bookings");
         const allBookings = bookingsResponse.bookings || [];
 
-        /* APPROVED BOOKINGS (FOR REVENUE ONLY) */
-        const approvedBookings = allBookings.filter(
+        /* REVENUE BOOKINGS - Approved + Pending (excludes only Cancelled) */
+        const revenueBookings = allBookings.filter(
           (booking) =>
-            (booking.status || "").toLowerCase().trim() === "approved"
+            (booking.status || "").toLowerCase().trim() !== "cancelled"
         );
 
         /* RECENT BOOKINGS - Approved + Pending only, sorted newest first */
@@ -53,16 +53,26 @@ function Dashboard() {
             return dateB - dateA;
           });
 
-        /* TOTAL REVENUE - ONLY APPROVED */
-        const totalRevenue = approvedBookings.reduce(
+        /* TOTAL REVENUE - APPROVED + PENDING (matches Reports page) */
+        const totalRevenue = revenueBookings.reduce(
           (sum, booking) =>
             sum + Number(booking.paidAmount || booking.advance || 0),
           0
         );
 
-        /* PENDING DUES */
-        const pendingDues =
-          Number(statsData.pendingDues || statsData.totalPendingAmount) || 0;
+        /* PENDING DUES - remaining amount of Pending bookings (matches Reports page) */
+        const pendingMap = new Map();
+        allBookings.forEach((booking) => {
+          if ((booking.status || "").toLowerCase().trim() !== "pending") return;
+          const groupId = booking.bookingGroupId || booking._id;
+          if (!pendingMap.has(groupId)) {
+            pendingMap.set(groupId, Number(booking.remainingAmount || 0));
+          }
+        });
+        const pendingDues = Array.from(pendingMap.values()).reduce(
+          (sum, v) => sum + v,
+          0
+        );
 
         /* TODAY BOOKINGS */
         const todayBookings = Number(statsData.todayBookings) || 0;
@@ -75,7 +85,7 @@ function Dashboard() {
 
         /* REVENUE BY PURPOSE */
         const revenueByPurpose = Object.values(
-          approvedBookings.reduce((grouped, booking) => {
+          revenueBookings.reduce((grouped, booking) => {
             const purpose = booking.purpose || "Unknown";
             const paid = Number(booking.paidAmount || booking.advance || 0);
             if (!grouped[purpose]) {
